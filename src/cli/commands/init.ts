@@ -3,7 +3,7 @@ import { writeFile } from "node:fs/promises";
 import path from "node:path";
 
 const STARTER = `# RecoverySpec starter configuration.
-# Run: recoveryspec test
+# Edit the case below to match your own CLI, then run: recoveryspec test
 # Docs: https://github.com/chrisriv10/RecurSpec
 
 version: 1
@@ -26,8 +26,8 @@ cases:
       remove:
         - .acme
     run:
-      command: node
-      args: ["./demo/acme-cli/acme.mjs", "deploy"]
+      command: acme
+      args: [deploy]
     failure:
       exitCode: nonzero
       stderr:

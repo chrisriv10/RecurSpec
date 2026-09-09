@@ -1,4 +1,4 @@
-﻿# RecurSpec
+# RecurSpec
 
 **Test whether your error messages actually get users unstuck.**
 
@@ -50,7 +50,7 @@ recoveryspec validate
 recoveryspec test
 ```
 
-Create `recoveryspec.yml`:
+`init` writes a starter `recoveryspec.yml` with one example contract:
 
 ```yaml
 version: 1
@@ -75,42 +75,71 @@ cases:
       exitCode: 0
 ```
 
-Run it:
+## Example output
 
-```bash
-pnpm recoveryspec test
-```
+`pnpm demo` runs the showcase suite in `recoveryspec.yml` against the bundled
+`demo/acme-cli` fixture CLI, which mixes working and deliberately broken recovery
+paths. Real output (timings vary, exit code `1` because broken paths are caught by design):
 
 ```text
 RecoverySpec v0.1.0
 
 ✓ User runs deploy before initializing a project
-  deploy -> init -> deploy
-  recovered in 1 hop · 314ms
+  node demo/acme-cli/acme.mjs deploy → node demo/acme-cli/acme.mjs init → node demo/acme-cli/acme.mjs deploy
+  recovered in 1 hop · 404ms
+
+✓ Publishing with an expired session
+  node demo/acme-cli/acme.mjs publish → node demo/acme-cli/acme.mjs login → node demo/acme-cli/acme.mjs publish
+  recovered in 1 hop · 430ms
 
 ✓ Login then org selection, chained from tool output
-  deploy -> login -> select-org -> deploy
-  recovered in 2 hops · 412ms
+  node demo/acme-cli/acme.mjs deploy → node demo/acme-cli/acme.mjs login → node demo/acme-cli/acme.mjs select-org → node demo/acme-cli/acme.mjs deploy
+  recovered in 2 hops · 470ms
 
-✗ Recovery succeeds but the original task still fails
-  publish -> login
+✗ Recovery succeeds but the original task still fails (dead end)
+  node demo/acme-cli/acme.mjs publish → node demo/acme-cli/acme.mjs login
   Recovery made progress, but the original task still fails with a new error.
+
   Status: PARTIAL_RECOVERY
 
+✗ The tool suggests a command that no longer exists
+  node demo/acme-cli/acme.mjs deploy → node demo/acme-cli/acme.mjs setup
+  The recovery command ran but failed.
+  Recovery step failed and offered no further advice: node demo/acme-cli/acme.mjs setup
+
+  Status: RECOVERY_COMMAND_FAILED
+
 ✗ The tool suggests a dangerous command that must be blocked
+  node demo/acme-cli/acme.mjs deploy
   BLOCKED RECOVERY COMMAND
   Command "sudo" is never allowed (dangerous system command).
+
   Status: BLOCKED_RECOVERY
 
 ✗ Login and configure point at each other forever
+  node demo/acme-cli/acme.mjs login → node demo/acme-cli/acme.mjs configure → node demo/acme-cli/acme.mjs login → node demo/acme-cli/acme.mjs configure
   RECOVERY LOOP DETECTED
+  The same recovery step repeated. Stopped instead of looping forever.
+
   Status: RECOVERY_LOOP
 
-8 recovery contracts · 4 passed · Recovery rate: 50.0%
-```
+✓ Machine-readable JSON recovery hint
+  node demo/acme-cli/acme.mjs deploy → node demo/acme-cli/acme.mjs init → node demo/acme-cli/acme.mjs deploy
+  recovered in 1 hop · 311ms
 
-Try it yourself: `pnpm demo` runs the showcase suite above against the bundled
-`demo/acme-cli` fixture CLI.
+RecoverySpec
+
+8 recovery contracts
+
+4 passed
+1 dead ends (1 partial)
+1 recovery loop
+1 blocked commands
+
+Recovery rate: 50.0%
+Median hops: 1
+Maximum hops: 2
+```
 
 ## What it catches
 
@@ -144,7 +173,7 @@ recovery:
       args: [login]
 ```
 
-Multi-step recovery paths are supported too:
+Multi-step recovery paths are supported too (up to `maxHops`, default 3, hard max 10):
 
 ```text
 deploy
@@ -200,7 +229,8 @@ workspace:
       TEST=true
 ```
 
-Failed workspaces can optionally be preserved for inspection.
+Failed workspaces can optionally be preserved for inspection
+(`preserve` / `preserveOnFailure`).
 
 ## Safety
 

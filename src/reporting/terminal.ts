@@ -9,7 +9,7 @@ export function isColorSupported(env: NodeJS.ProcessEnv = process.env): boolean 
 
 function statusLine(c: CaseResult, colors: boolean): string {
   const ok = c.status === "PASS";
-  const mark = ok ? "✓" : "✗";
+  const mark = ok ? "âœ“" : "âœ—";
   const title = c.description ?? c.name;
   if (!colors) return mark + " " + title;
   return ok ? pc.green(mark + " " + title) : pc.red(mark + " " + title);
@@ -21,20 +21,20 @@ function chainLine(c: CaseResult): string {
     parts.push([step.command, ...step.args].join(" "));
   }
   if (c.verifyOk && c.status === "PASS") parts.push(c.originalCommand);
-  return "  " + parts.join(" → ");
+  return "  " + parts.join(" â†’ ");
 }
 
 export function renderTerminal(result: RunResult, options: { verbose?: boolean; version?: string } = {}): string {
   const colors = isColorSupported();
   const lines: string[] = [];
-  lines.push(colors ? pc.bold("RecoverySpec" + (options.version ? " v" + options.version : "")) : "RecoverySpec");
+  const title = "RecoverySpec" + (options.version ? " v" + options.version : ""); lines.push(colors ? pc.bold(title) : title);
   lines.push("");
 
   for (const c of result.cases) {
     lines.push(statusLine(c, colors));
     lines.push(chainLine(c));
     if (c.status === "PASS") {
-      lines.push("  recovered in " + c.hops + (c.hops === 1 ? " hop" : " hops") + " · " + c.durationMs + "ms");
+      lines.push("  recovered in " + c.hops + (c.hops === 1 ? " hop" : " hops") + " Â· " + c.durationMs + "ms");
     } else {
       const detail = humanDetail(c);
       if (detail) {
