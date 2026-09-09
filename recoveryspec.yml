@@ -1,4 +1,4 @@
-﻿# RecoverySpec showcase: if a developer follows the error instructions exactly,
+# RecoverySpec showcase: if a developer follows the error instructions exactly,
 # can they actually complete what they were trying to do?
 # Run with: recoveryspec test   (or: pnpm demo)
 

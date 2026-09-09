@@ -1,4 +1,4 @@
-﻿import type { StreamAssertion } from "../types/config.js";
+import type { StreamAssertion } from "../types/config.js";
 
 export interface StreamCheckResult {
   ok: boolean;

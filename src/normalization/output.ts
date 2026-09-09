@@ -1,4 +1,4 @@
-﻿const REPLACEMENTS: Array<[RegExp, string]> = [
+const REPLACEMENTS: Array<[RegExp, string]> = [
   [/recoveryspec-[A-Za-z0-9_-]+/g, "recoveryspec-<tmp>"],
   [/[A-Za-z]:\\Users\\[^\\]+\\AppData\\Local\\Temp\\[^\s"<>|]+/g, "<tmp>"],
   [/\/(var\/folders\/[^\s"<>|]+|tmp\/[^\s"<>|]*)/g, "<tmp>"],

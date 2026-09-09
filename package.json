@@ -1,4 +1,4 @@
-﻿{
+{
   "name": "recoveryspec",
   "version": "0.1.0",
   "description": "Test whether your error messages actually get users unstuck.",
@@ -49,7 +49,7 @@
     "prepublishOnly": "pnpm build"
   },
   "dependencies": {
-    "cac": "^1.0.0",
+    "commander": "^15.0.0",
     "execa": "^9.5.2",
     "fast-glob": "^3.3.3",
     "picocolors": "^1.1.1",
@@ -64,4 +64,3 @@
     "vitest": "^2.1.5"
   }
 }
-

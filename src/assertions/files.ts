@@ -1,4 +1,4 @@
-﻿import { access } from "node:fs/promises";
+import { access } from "node:fs/promises";
 import { constants } from "node:fs";
 import path from "node:path";
 import { resolveInWorkspace } from "../safety/paths.js";

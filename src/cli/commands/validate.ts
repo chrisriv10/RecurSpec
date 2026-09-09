@@ -1,4 +1,4 @@
-﻿import { findConfigFile, loadConfigFile } from "../../config/loader.js";
+import { findConfigFile, loadConfigFile } from "../../config/loader.js";
 
 export async function validateCommand(cwd: string, explicit?: string): Promise<number> {
   const found = await findConfigFile(cwd, explicit);

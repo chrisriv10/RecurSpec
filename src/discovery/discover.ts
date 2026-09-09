@@ -1,4 +1,4 @@
-﻿import { mkdtemp, mkdir, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, mkdir, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import os from "node:os";
 import { stringify as stringifyYaml } from "yaml";

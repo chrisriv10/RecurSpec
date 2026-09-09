@@ -1,4 +1,4 @@
-﻿import { mkdtemp, mkdir, rm, writeFile, readFile, stat, chmod } from "node:fs/promises";
+import { mkdtemp, mkdir, rm, writeFile, readFile, stat, chmod } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import path from "node:path";
 import os from "node:os";

@@ -30,7 +30,7 @@ function writeState(rel, content) {
 }
 
 function unknownCommand(name) {
-  fail("Unknown command: " + name + ". Run `" + SELF + " --help` for usage.");
+  fail("Unknown command: " + name + ".");
 }
 
 switch (command) {
@@ -112,6 +112,10 @@ switch (command) {
       break;
     }
     if (scenario === "structured") {
+      if (hasFile(".acme/initialized")) {
+        ok("Deployed successfully.");
+        break;
+      }
       const payload = {
         code: "NOT_INITIALIZED",
         message: "Project not initialized",

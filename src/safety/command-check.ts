@@ -1,4 +1,4 @@
-﻿import { splitShellWords } from "../util/shlex.js";
+import { splitShellWords } from "../util/shlex.js";
 
 export interface CommandCheck {
   ok: boolean;

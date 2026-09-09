@@ -1,4 +1,4 @@
-﻿import pc from "picocolors";
+import pc from "picocolors";
 import type { CaseResult, RunResult } from "../types/result.js";
 
 export function isColorSupported(env: NodeJS.ProcessEnv = process.env): boolean {

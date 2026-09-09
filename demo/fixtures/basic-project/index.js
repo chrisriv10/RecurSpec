@@ -1,1 +1,1 @@
-﻿console.log("basic project");
+console.log("basic project");

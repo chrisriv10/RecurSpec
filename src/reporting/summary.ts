@@ -1,4 +1,4 @@
-﻿import type { CaseResult, CaseStatus, RunResult, RunSummary } from "../types/result.js";
+import type { CaseResult, CaseStatus, RunResult, RunSummary } from "../types/result.js";
 
 export function buildSummary(cases: CaseResult[], seed?: number): RunSummary {
   const byStatus = {} as Partial<Record<CaseStatus, number>>;

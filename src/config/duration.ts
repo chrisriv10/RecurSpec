@@ -1,4 +1,4 @@
-﻿export function parseDuration(input: string): number {
+export function parseDuration(input: string): number {
   const trimmed = input.trim();
   const match = /^(\d+(?:\.\d+)?)\s*(ms|s|m|h)?$/.exec(trimmed);
   if (!match) {

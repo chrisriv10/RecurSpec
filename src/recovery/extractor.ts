@@ -56,8 +56,7 @@ function harvestFromLine(line: string, lineNumber: number, hits: RawHit[]): void
         hits.push({ raw: candidate, pattern: inline.pattern, confidence: inline.confidence, line: lineNumber });
       }
       if (m[0].length === 0) re.lastIndex += 1;
-      if (!inline.re.flags.includes("g") && !inline.re.flags.includes("i")) break;
-      if (inline.pattern !== "inline-backticks") break;
+      if (!inline.pattern.endsWith("-backticks")) break;
     }
   }
 }

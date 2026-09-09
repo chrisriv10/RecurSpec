@@ -1,4 +1,4 @@
-﻿import { runRecoverySpec } from "../../index.js";
+import { runRecoverySpec } from "../../index.js";
 import { renderTerminal } from "../../reporting/terminal.js";
 import { renderJson } from "../../reporting/json-reporter.js";
 import { renderJUnit } from "../../reporting/junit.js";

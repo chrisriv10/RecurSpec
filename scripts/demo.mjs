@@ -1,4 +1,4 @@
-﻿#!/usr/bin/env node
+#!/usr/bin/env node
 // Showcase demo: builds (if needed) and runs RecoverySpec against recoveryspec.yml,
 // which deliberately mixes passing and failing recovery contracts.
 import { spawnSync } from "node:child_process";

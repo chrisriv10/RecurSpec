@@ -1,4 +1,4 @@
-﻿import { signatureFor } from "../normalization/output.js";
+import { signatureFor } from "../normalization/output.js";
 
 export class LoopDetector {
   private seen = new Set<string>();

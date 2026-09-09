@@ -1,4 +1,4 @@
-﻿export function isDebugEnabled(env: NodeJS.ProcessEnv = process.env): boolean {
+export function isDebugEnabled(env: NodeJS.ProcessEnv = process.env): boolean {
   const flag = env["DEBUG"] ?? "";
   return flag.split(",").map((s) => s.trim().toLowerCase()).includes("recoveryspec");
 }

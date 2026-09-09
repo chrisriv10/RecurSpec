@@ -1,4 +1,4 @@
-﻿import path from "node:path";
+import path from "node:path";
 
 export function isDangerousWorkspacePath(p: string): boolean {
   const normalized = p.replace(/\\/g, "/");

@@ -1,4 +1,4 @@
-﻿export function maskSecrets(text: string, secrets: string[], env: Record<string, string>): string {
+export function maskSecrets(text: string, secrets: string[], env: Record<string, string>): string {
   let out = text;
   for (const name of secrets) {
     const value = env[name];

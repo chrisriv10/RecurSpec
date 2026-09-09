@@ -1,4 +1,4 @@
-﻿export type RecoveryNodeKind =
+export type RecoveryNodeKind =
   | "command"
   | "failure"
   | "advice"

@@ -1,4 +1,4 @@
-﻿import type { RunResult } from "../types/result.js";
+import type { RunResult } from "../types/result.js";
 
 export function renderMarkdown(result: RunResult): string {
   const lines: string[] = [];

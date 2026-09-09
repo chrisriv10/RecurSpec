@@ -1,5 +1,5 @@
 ﻿#!/usr/bin/env node
-import { cac } from "cac";
+import { Command } from "commander";
 import { testCommand } from "./cli/commands/test.js";
 import { validateCommand } from "./cli/commands/validate.js";
 import { initCommand } from "./cli/commands/init.js";
@@ -7,71 +7,74 @@ import { explainCommand } from "./cli/commands/explain.js";
 import { discoverCommand } from "./cli/commands/discover.js";
 import { version } from "./cli/version.js";
 
-const cli = cac("recoveryspec");
+const program = new Command();
+program.name("recoveryspec").description("Test whether your error messages actually get users unstuck.").version(version);
 
-cli
-  .command("test [config]", "Run recovery contracts")
-  .option("--case <name>", "Only run cases with this name (repeatable)", { type: [] })
-  .option("--tag <tag>", "Only run cases with this tag (repeatable)", { type: [] })
-  .option("--format <format>", "Output format: human, json, junit, markdown", { default: "human" })
+function collect(value: string, previous: string[]): string[] {
+  return [...previous, value];
+}
+
+program
+  .command("test")
+  .description("Run recovery contracts")
+  .argument("[config]", "Path to the config file")
+  .option("--case <name>", "Only run cases with this name (repeatable)", collect, [])
+  .option("--tag <tag>", "Only run cases with this tag (repeatable)", collect, [])
+  .option("--format <format>", "Output format: human, json, junit, markdown", "human")
   .option("--verbose", "Show recovery traces and extra detail")
   .option("--fail-fast", "Stop after the first failing case")
   .option("--seed <seed>", "Seed for any randomized behavior")
   .option("--debug", "Print internal diagnostics to stderr")
-  .action(async (config: string | undefined, options: Record<string, unknown>) => {
-    const toList = (v: unknown): string[] | undefined => {
-      if (v === undefined) return undefined;
-      return (Array.isArray(v) ? v : [v]).map(String);
-    };
-    const code = await testCommand(process.cwd(), {
-      config,
-      cases: toList(options["case"]),
-      tags: toList(options["tag"]),
-      format: String(options["format"] ?? "human"),
-      verbose: Boolean(options["verbose"]),
-      failFast: Boolean(options["fail-fast"]),
-      seed: options["seed"] === undefined ? undefined : Number(options["seed"]),
-      debug: Boolean(options["debug"])
-    });
-    process.exitCode = code;
-  });
+  .action(
+    async (
+      config: string | undefined,
+      options: { case: string[]; tag: string[]; format: string; verbose?: boolean; failFast?: boolean; seed?: string; debug?: boolean }
+    ) => {
+      process.exitCode = await testCommand(process.cwd(), {
+        config,
+        cases: options.case.length > 0 ? options.case : undefined,
+        tags: options.tag.length > 0 ? options.tag : undefined,
+        format: options.format,
+        verbose: options.verbose,
+        failFast: options.failFast,
+        seed: options.seed === undefined ? undefined : Number(options.seed),
+        debug: options.debug
+      });
+    }
+  );
 
-cli
-  .command("validate [config]", "Validate the configuration without running anything")
+program
+  .command("validate")
+  .description("Validate the configuration without running anything")
+  .argument("[config]", "Path to the config file")
   .action(async (config: string | undefined) => {
     process.exitCode = await validateCommand(process.cwd(), config);
   });
 
-cli
-  .command("init", "Create a starter recoveryspec.yml")
+program
+  .command("init")
+  .description("Create a starter recoveryspec.yml")
   .option("--force", "Overwrite an existing config file")
-  .action(async (options: Record<string, unknown>) => {
-    process.exitCode = await initCommand(process.cwd(), Boolean(options["force"]));
+  .action(async (options: { force?: boolean }) => {
+    process.exitCode = await initCommand(process.cwd(), Boolean(options.force));
   });
 
-cli
-  .command("explain <case>", "Explain a recovery contract without running it")
+program
+  .command("explain")
+  .description("Explain a recovery contract without running it")
+  .argument("<case>", "Name of the case to explain")
   .option("--config <path>", "Path to the config file")
-  .action(async (caseName: string, options: Record<string, unknown>) => {
-    const explicit = options["config"] === undefined ? undefined : String(options["config"]);
-    process.exitCode = await explainCommand(process.cwd(), caseName, explicit);
+  .action(async (caseName: string, options: { config?: string }) => {
+    process.exitCode = await explainCommand(process.cwd(), caseName, options.config);
   });
 
-cli
-  .command("discover", "Experimentally discover candidate recovery contracts")
+program
+  .command("discover")
+  .description("Experimentally discover candidate recovery contracts")
   .option("--config <path>", "Path to the config file")
   .option("--write", "Write draft cases to recoveryspec.discovered.yml")
-  .action(async (options: Record<string, unknown>) => {
-    const explicit = options["config"] === undefined ? undefined : String(options["config"]);
-    process.exitCode = await discoverCommand(process.cwd(), { config: explicit, write: Boolean(options["write"]) });
+  .action(async (options: { config?: string; write?: boolean }) => {
+    process.exitCode = await discoverCommand(process.cwd(), { config: options.config, write: options.write });
   });
 
-cli.help();
-cli.version(version);
-
-try {
-  cli.parse(process.argv, { run: true });
-} catch (err) {
-  process.stderr.write(String((err as Error).message) + "\n");
-  process.exitCode = 2;
-}
+await program.parseAsync(process.argv);

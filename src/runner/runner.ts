@@ -378,7 +378,27 @@ export async function runCase(
         await runStepsBestEffort(config.afterEach, base, warnings, "afterEach");
         return finish("TIMEOUT");
       }
-      if (outcome.result.exitCode === 0) break;
+      if (outcome.result.exitCode === 0) {
+        const chained = extractFromStreams(outcome.result.stdout, outcome.result.stderr, {
+          mode: kase.recovery?.extract?.mode ?? "command"
+        });
+        const chainedRanked = rankCandidates(chained, {
+          prefer: kase.recovery?.prefer ?? ["stderr", "stdout"],
+          originalCommand: kase.run.command
+        });
+        const chainedSelected = selectCandidate(chainedRanked, { prefer: kase.recovery?.prefer });
+        if (
+          chainedSelected.kind === "single" &&
+          chainedSelected.candidate.confidence >= 0.85 &&
+          recoverySteps.length < maxHops
+        ) {
+          current = chainedSelected.candidate;
+          selectedAdvice = current;
+          graph.addNode("advice", "suggested: " + displayCommand(current.command, current.args));
+          continue;
+        }
+        break;
+      }
       if (recoverySteps.length >= maxHops) {
         failureDetail = "Recovery step failed: " + displayCommand(current.command, current.args);
         await runStepsBestEffort(kase.teardown, base, warnings, "teardown");

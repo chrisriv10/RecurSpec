@@ -1,4 +1,4 @@
-﻿import { resolveConfig } from "../../config/loader.js";
+import { resolveConfig } from "../../config/loader.js";
 import { candidatesToYaml, discoverCandidates } from "../../discovery/discover.js";
 import { writeFile } from "node:fs/promises";
 import path from "node:path";

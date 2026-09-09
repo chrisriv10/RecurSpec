@@ -1,4 +1,4 @@
-﻿import type { RecoveryCase, RecoverySpecConfig } from "../types/config.js";
+import type { RecoveryCase, RecoverySpecConfig } from "../types/config.js";
 
 const ALWAYS_PASSTHROUGH = ["PATH"];
 const WINDOWS_PASSTHROUGH = ["SystemRoot", "WINDIR", "TEMP", "TMP", "PATHEXT", "COMSPEC"];

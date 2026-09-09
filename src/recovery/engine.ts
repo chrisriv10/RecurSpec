@@ -1,4 +1,4 @@
-﻿import { extractFromStreams } from "./extractor.js";
+import { extractFromStreams } from "./extractor.js";
 import { rankCandidates, selectCandidate } from "./ranking.js";
 import type { RecoveryCase } from "../types/config.js";
 import type { ExecutedCommand, ExtractedAdvice } from "../types/result.js";

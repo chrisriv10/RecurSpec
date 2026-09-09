@@ -1,4 +1,4 @@
-﻿import { resolveConfig } from "../../config/loader.js";
+import { resolveConfig } from "../../config/loader.js";
 import { effectiveSafety } from "../../safety/policy.js";
 
 export async function explainCommand(cwd: string, caseName: string, explicit?: string): Promise<number> {

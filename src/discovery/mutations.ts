@@ -1,4 +1,4 @@
-﻿export interface DiscoveryMutation {
+export interface DiscoveryMutation {
   name: string;
   description: string;
   apply: Record<string, string>;

@@ -1,4 +1,4 @@
-﻿import type { RecoveryTrace } from "./recovery.js";
+import type { RecoveryTrace } from "./recovery.js";
 
 export type CaseStatus =
   | "PASS"

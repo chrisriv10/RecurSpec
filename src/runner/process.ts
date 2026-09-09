@@ -50,7 +50,7 @@ export async function runStep(step: StepSpec, options: RunStepOptions): Promise<
       stdout: typeof result.stdout === "string" ? result.stdout : String(result.stdout ?? ""),
       stderr: typeof result.stderr === "string" ? result.stderr : String(result.stderr ?? ""),
       durationMs: Date.now() - started,
-      timedOut: false,
+      timedOut: (result as { timedOut?: unknown }).timedOut === true,
       cwd
     };
   } catch (err) {

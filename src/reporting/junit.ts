@@ -1,4 +1,4 @@
-﻿import type { RunResult, CaseResult } from "../types/result.js";
+import type { RunResult, CaseResult } from "../types/result.js";
 
 function escapeXml(text: string): string {
   return text

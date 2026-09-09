@@ -1,4 +1,4 @@
-﻿import type { RecoveryCase, RecoverySpecConfig, SafetySpec } from "../types/config.js";
+import type { RecoveryCase, RecoverySpecConfig, SafetySpec } from "../types/config.js";
 
 export interface EffectiveSafety {
   shell: boolean;

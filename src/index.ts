@@ -1,4 +1,4 @@
-﻿import { resolveConfig } from "./config/loader.js";
+import { resolveConfig } from "./config/loader.js";
 import { runCase, runStepsBestEffort } from "./runner/runner.js";
 import { buildRunResult } from "./reporting/summary.js";
 import type { RecoverySpecConfig } from "./types/config.js";

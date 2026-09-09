@@ -1,4 +1,4 @@
-﻿import type { RecoveryEdge, RecoveryNode, RecoveryTrace } from "../types/recovery.js";
+import type { RecoveryEdge, RecoveryNode, RecoveryTrace } from "../types/recovery.js";
 
 export class RecoveryGraph {
   private nodes: RecoveryNode[] = [];

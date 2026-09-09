@@ -1,4 +1,4 @@
-﻿export function splitShellWords(input: string): string[] | null {
+export function splitShellWords(input: string): string[] | null {
   const tokens: string[] = [];
   let current = "";
   let inSingle = false;

@@ -1,4 +1,4 @@
-﻿import type { ExtractedAdvice } from "../types/result.js";
+import type { ExtractedAdvice } from "../types/result.js";
 
 export interface RankOptions {
   prefer?: Array<"stderr" | "stdout">;

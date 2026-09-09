@@ -1,4 +1,4 @@
-﻿import { readFile } from "node:fs/promises";
+import { readFile } from "node:fs/promises";
 import { resolveInWorkspace } from "../safety/paths.js";
 import type { JsonAssertion } from "../types/config.js";
 import type { VerificationDetail } from "../types/result.js";

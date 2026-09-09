@@ -1,4 +1,4 @@
-﻿export interface StepSpec {
+export interface StepSpec {
   command: string;
   args?: string[];
   cwd?: string;
