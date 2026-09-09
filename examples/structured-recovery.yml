@@ -1,0 +1,15 @@
+﻿# Structured recovery: consume a machine-readable hint.
+version: 1
+cases:
+  - name: structured-hint
+    run:
+      command: acme
+      args: [deploy]
+    failure:
+      exitCode: nonzero
+    recovery:
+      source: structured
+      format: json
+    verify:
+      rerunOriginal: true
+      exitCode: 0

@@ -1,4 +1,4 @@
-# RecurSpec
+﻿# RecurSpec
 
 **Test whether your error messages actually get users unstuck.**
 
@@ -17,55 +17,59 @@ $ acme deploy
 
 Error: Project not initialized.
 Run `acme init`.
-````
+```
 
-A normal test might check that this error appears.
+A normal test might check that this error appears:
 
-RecurSpec checks that this works:
+```ts
+expect(stderr).toContain("Run `acme init`");
+```
+
+That proves the message exists. It does not prove that `acme init` gets the user unstuck.
+
+RecurSpec tests the whole path:
 
 ```text
-acme deploy
-  ↓
-Project not initialized
-  ↓
-acme init
-  ↓
-acme deploy
-  ↓
-success
+error -> advice -> recovery -> retry -> result
 ```
 
 ## Install
 
+Requires Node.js 22+ and pnpm.
+
 ```bash
-npm install --save-dev recurspec
+pnpm add -D recoveryspec
 ```
 
 ## Quick start
 
-Create `recurspec.yml`:
+```bash
+recoveryspec init
+# edit recoveryspec.yml to describe your CLI failure + recovery
+recoveryspec validate
+recoveryspec test
+```
+
+Create `recoveryspec.yml`:
 
 ```yaml
 version: 1
 
 cases:
   - name: missing-project-config
-
+    description: User runs deploy before initializing a project
     workspace:
-      remove:
-        - .acme
-
+      copy: [fixtures/basic-project/**]
+      remove: [.acme]
     run:
       command: acme
       args: [deploy]
-
     failure:
+      exitCode: nonzero
       stderr:
         contains: "Project not initialized"
-
     recovery:
-      source: output
-
+      source: output        # use the tool own advice
     verify:
       rerunOriginal: true
       exitCode: 0
@@ -74,31 +78,39 @@ cases:
 Run it:
 
 ```bash
-npx recurspec test
+pnpm recoveryspec test
 ```
 
 ```text
-RecurSpec
+RecoverySpec v0.1.0
 
-✓ missing project config
-  deploy → acme init → deploy
-  recovered in 1 step
+✓ User runs deploy before initializing a project
+  deploy -> init -> deploy
+  recovered in 1 hop · 314ms
 
-✓ expired credentials
-  publish → acme login → publish
-  recovered in 1 step
+✓ Login then org selection, chained from tool output
+  deploy -> login -> select-org -> deploy
+  recovered in 2 hops · 412ms
 
-✗ missing organization
-  deploy → acme login → deploy
+✗ Recovery succeeds but the original task still fails
+  publish -> login
+  Recovery made progress, but the original task still fails with a new error.
+  Status: PARTIAL_RECOVERY
 
-  Recovery command succeeded, but deploy still fails.
+✗ The tool suggests a dangerous command that must be blocked
+  BLOCKED RECOVERY COMMAND
+  Command "sudo" is never allowed (dangerous system command).
+  Status: BLOCKED_RECOVERY
 
-  No organization selected.
+✗ Login and configure point at each other forever
+  RECOVERY LOOP DETECTED
+  Status: RECOVERY_LOOP
 
-3 recovery paths
-2 passed
-1 dead end
+8 recovery contracts · 4 passed · Recovery rate: 50.0%
 ```
+
+Try it yourself: `pnpm demo` runs the showcase suite above against the bundled
+`demo/acme-cli` fixture CLI.
 
 ## What it catches
 
@@ -115,21 +127,7 @@ RecurSpec catches cases where:
 
 ## Recovery paths
 
-RecurSpec treats recovery instructions as something that can be tested.
-
-```text
-failure
-  ↓
-recovery advice
-  ↓
-recovery command
-  ↓
-retry
-  ↓
-verification
-```
-
-Recovery can come directly from the program's output:
+Recovery can come directly from the program output:
 
 ```text
 Run `acme init`
@@ -150,18 +148,12 @@ Multi-step recovery paths are supported too:
 
 ```text
 deploy
-  ↓
-login required
-  ↓
-acme login
-  ↓
-organization required
-  ↓
-acme select-org
-  ↓
-deploy
-  ↓
-success
+  -> login required
+  -> acme login
+  -> organization required
+  -> acme select-org
+  -> deploy
+  -> success
 ```
 
 ## Verification
@@ -183,7 +175,10 @@ verify:
   files:
     exists:
       - .acme/config.json
-
+  json:
+    path: .acme/config.json
+    assertions:
+      initialized: true
   stdout:
     contains: "Ready"
 ```
@@ -198,10 +193,8 @@ RecurSpec does not apply test mutations directly to your project directory.
 workspace:
   copy:
     - fixtures/project/**
-
   remove:
     - .acme
-
   write:
     ".env": |
       TEST=true
@@ -213,84 +206,82 @@ Failed workspaces can optionally be preserved for inspection.
 
 RecurSpec does not blindly execute anything it finds in stderr.
 
-Suggested commands are parsed and checked before execution. Shell chaining, redirection, command substitution, destructive commands, and other unsafe patterns are blocked by default.
-
-Commands can also be restricted explicitly:
+Suggested commands are parsed and checked before execution. Shell chaining,
+redirection, command substitution, destructive commands, and other unsafe patterns
+are blocked by default. When RecurSpec cannot determine that a recovery command
+is safe, it does not run it.
 
 ```yaml
 safety:
+  shell: false
+  network: warn
   allowedCommands:
     - acme
     - node
     - npm
 ```
 
-When RecurSpec cannot determine that a recovery command is safe, it does not run it.
-
 ## CI
 
 Recovery paths can run alongside the rest of your test suite.
 
 ```yaml
-name: RecurSpec
-
+name: RecoverySpec
 on:
   pull_request:
   push:
-
 jobs:
   recovery:
     runs-on: ubuntu-latest
-
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-
-      - run: npm ci
-      - run: npx recurspec test
+      - run: corepack enable
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm recoveryspec test
 ```
 
-RecurSpec exits with a non-zero status when a recovery contract fails.
+RecurSpec exits with a non-zero status when a recovery contract fails
+(`0` all pass, `1` recovery failure, `2` config/usage error).
 
 Machine-readable reporters are available for CI and tooling:
 
 ```bash
-recurspec test --format json
-recurspec test --format junit
-recurspec test --format markdown
+recoveryspec test --format json
+recoveryspec test --format junit
+recoveryspec test --format markdown
 ```
 
 ## Commands
 
-```text
-recurspec test                  Run recovery tests
-recurspec validate              Validate configuration
-recurspec init                  Create a starter config
-recurspec explain <case>        Inspect a recovery contract
+```bash
+recoveryspec test [--case NAME] [--tag TAG] [--format human|json|junit|markdown] [--verbose] [--fail-fast] [--seed N]
+recoveryspec validate
+recoveryspec init [--force]
+recoveryspec explain <case>
+recoveryspec discover [--write]
 ```
 
-Run `recurspec --help` for all options.
+Run `recoveryspec --help` for all options. Programmatic API:
+`import { runRecoverySpec } from "recoveryspec"`.
 
-## Why RecurSpec?
+See `docs/` for concepts, configuration, extraction, safety, reporters, and discovery.
 
-CLI tests commonly verify the failure itself:
+## Limitations
 
-```ts
-expect(stderr).toContain("Run `acme init`");
-```
+- The local backend isolates the filesystem (temp workspaces) but cannot enforce
+  OS-level network sandboxing; `safety.network: deny` is advisory until a Docker
+  backend exists.
+- Interactive TTY programs need scripted `stdin`; full PTY support is future work.
+- Recovery quality depends on tools printing greppable advice; ambiguous or missing
+  advice is reported, not guessed.
 
-That proves the message exists.
+## Roadmap
 
-It does not prove that `acme init` gets the user unstuck.
-
-RecurSpec tests the whole path:
-
-```text
-error → advice → recovery → retry → result
-```
+Docker/Podman and remote-sandbox backends, PTY support, recovery-graph
+visualization, and a GitHub Action wrapper around the JSON reporter.
 
 ## Status
 

@@ -1,0 +1,18 @@
+﻿# Explicit recovery: verify a known documented path.
+version: 1
+cases:
+  - name: explicit-login-recovery
+    run:
+      command: acme
+      args: [publish]
+    failure:
+      stderr:
+        matches: "Authentication required"
+    recovery:
+      steps:
+        - command: acme
+          args: [login, --token, test-token]
+    verify:
+      rerunOriginal: true
+      stdout:
+        contains: "Published successfully"
