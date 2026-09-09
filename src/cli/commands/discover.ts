@@ -23,7 +23,7 @@ export async function discoverCommand(cwd: string, options: DiscoverCommandOptio
     );
     return 2;
   }
-  process.stdout.write("RecoverySpec discovery (experimental): trying safe mutations...\n");
+  process.stdout.write("RecurSpec discovery (experimental): trying safe mutations...\n");
   const candidates = await discoverCandidates({ command: base.command, args: base.args ?? [], cwd: loaded.configDir });
   if (candidates.length === 0) {
     process.stdout.write("No candidate recovery contracts discovered.\n");
@@ -36,11 +36,11 @@ export async function discoverCommand(cwd: string, options: DiscoverCommandOptio
   }
   process.stdout.write("\nThese are drafts, not authoritative contracts. Review every generated case.\n");
   if (options.write) {
-    const out = path.join(loaded.configDir, "recoveryspec.discovered.yml");
+    const out = path.join(loaded.configDir, "recurspec.discovered.yml");
     await writeFile(out, candidatesToYaml(candidates, base.command, base.args ?? []), "utf8");
     process.stdout.write("\nWrote draft cases to " + out + ".\n");
   } else {
-    process.stdout.write("\nRun `recoveryspec discover --write` to generate draft cases.\n");
+    process.stdout.write("\nRun `recurspec discover --write` to generate draft cases.\n");
   }
   return 0;
 }

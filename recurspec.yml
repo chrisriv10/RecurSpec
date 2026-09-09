@@ -1,6 +1,6 @@
-# RecoverySpec showcase: if a developer follows the error instructions exactly,
+# RecurSpec showcase: if a developer follows the error instructions exactly,
 # can they actually complete what they were trying to do?
-# Run with: recoveryspec test   (or: pnpm demo)
+# Run with: recurspec test   (or: pnpm demo)
 
 version: 1
 

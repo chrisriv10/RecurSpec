@@ -1,4 +1,4 @@
-﻿#!/usr/bin/env node
+#!/usr/bin/env node
 import { Command } from "commander";
 import { testCommand } from "./cli/commands/test.js";
 import { validateCommand } from "./cli/commands/validate.js";
@@ -8,7 +8,7 @@ import { discoverCommand } from "./cli/commands/discover.js";
 import { version } from "./cli/version.js";
 
 const program = new Command();
-program.name("recoveryspec").description("Test whether your error messages actually get users unstuck.").version(version);
+program.name("recurspec").description("Test whether your error messages actually get users unstuck.").version(version);
 
 function collect(value: string, previous: string[]): string[] {
   return [...previous, value];
@@ -53,7 +53,7 @@ program
 
 program
   .command("init")
-  .description("Create a starter recoveryspec.yml")
+  .description("Create a starter recurspec.yml")
   .option("--force", "Overwrite an existing config file")
   .action(async (options: { force?: boolean }) => {
     process.exitCode = await initCommand(process.cwd(), Boolean(options.force));
@@ -72,7 +72,7 @@ program
   .command("discover")
   .description("Experimentally discover candidate recovery contracts")
   .option("--config <path>", "Path to the config file")
-  .option("--write", "Write draft cases to recoveryspec.discovered.yml")
+  .option("--write", "Write draft cases to recurspec.discovered.yml")
   .action(async (options: { config?: string; write?: boolean }) => {
     process.exitCode = await discoverCommand(process.cwd(), { config: options.config, write: options.write });
   });

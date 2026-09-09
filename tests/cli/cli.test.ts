@@ -1,4 +1,4 @@
-﻿import { execFile } from "node:child_process";
+import { execFile } from "node:child_process";
 import { mkdtemp, readFile, rm, writeFile, cp, mkdir } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -36,7 +36,7 @@ async function makeProject(configYaml: string): Promise<string> {
   const dir = await mkdtemp(path.join(tmpdir(), "rs-cli-"));
   await mkdir(path.join(dir, "demo", "acme-cli"), { recursive: true });
   await cp(path.join(repoRoot, "demo", "acme-cli", "acme.mjs"), path.join(dir, "demo", "acme-cli", "acme.mjs"));
-  await writeFile(path.join(dir, "recoveryspec.yml"), configYaml, "utf8");
+  await writeFile(path.join(dir, "recurspec.yml"), configYaml, "utf8");
   return dir;
 }
 
@@ -62,7 +62,7 @@ const PASSING_CONFIG = [
 
 const FAILING_CONFIG = PASSING_CONFIG.replace("cli-pass", "cli-fail").replace("tags: [smoke]", "tags: [broken]").replace("exitCode: 0\n", "exitCode: 0\n      stdout:\n        contains: this-never-appears\n");
 
-describe("recoveryspec CLI", () => {
+describe("recurspec CLI", () => {
   beforeAll(ensureBuilt, 240000);
 
   it("--version reports the package version", async () => {
@@ -98,7 +98,7 @@ describe("recoveryspec CLI", () => {
     try {
       const res = await runCli(dir, ["test"]);
       expect(res.code).toBe(2);
-      expect(res.stderr).toContain("recoveryspec init");
+      expect(res.stderr).toContain("recurspec init");
     } finally {
       await rm(dir, { recursive: true, force: true });
     }
@@ -137,7 +137,7 @@ describe("recoveryspec CLI", () => {
     const project = await makeProject(PASSING_CONFIG);
     try {
       expect((await runCli(project, ["validate"])).code).toBe(0);
-      await writeFile(path.join(project, "recoveryspec.yml"), "version: 1\ncases: []\n", "utf8");
+      await writeFile(path.join(project, "recurspec.yml"), "version: 1\ncases: []\n", "utf8");
       expect((await runCli(project, ["validate"])).code).toBe(2);
     } finally {
       await rm(project, { recursive: true, force: true });
@@ -150,7 +150,7 @@ describe("recoveryspec CLI", () => {
       expect((await runCli(dir, ["init"])).code).toBe(0);
       expect((await runCli(dir, ["init"])).code).toBe(2);
       expect((await runCli(dir, ["init", "--force"])).code).toBe(0);
-      const content = await readFile(path.join(dir, "recoveryspec.yml"), "utf8");
+      const content = await readFile(path.join(dir, "recurspec.yml"), "utf8");
       expect(content).toContain("version: 1");
     } finally {
       await rm(dir, { recursive: true, force: true });

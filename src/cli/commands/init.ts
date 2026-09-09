@@ -2,8 +2,8 @@ import { existsSync } from "node:fs";
 import { writeFile } from "node:fs/promises";
 import path from "node:path";
 
-const STARTER = `# RecoverySpec starter configuration.
-# Edit the case below to match your own CLI, then run: recoveryspec test
+const STARTER = `# RecurSpec starter configuration.
+# Edit the case below to match your own CLI, then run: recurspec test
 # Docs: https://github.com/chrisriv10/RecurSpec
 
 version: 1
@@ -43,14 +43,14 @@ cases:
 `;
 
 export async function initCommand(cwd: string, force: boolean): Promise<number> {
-  const target = path.join(cwd, "recoveryspec.yml");
+  const target = path.join(cwd, "recurspec.yml");
   if (existsSync(target) && !force) {
     process.stderr.write(
-      "recoveryspec.yml already exists in " + cwd + ".\nRefusing to overwrite. Re-run with --force to replace it.\n"
+      "recurspec.yml already exists in " + cwd + ".\nRefusing to overwrite. Re-run with --force to replace it.\n"
     );
     return 2;
   }
   await writeFile(target, STARTER, "utf8");
-  process.stdout.write("Created " + target + ".\nEdit it, then run: recoveryspec test\n");
+  process.stdout.write("Created " + target + ".\nEdit it, then run: recurspec test\n");
   return 0;
 }

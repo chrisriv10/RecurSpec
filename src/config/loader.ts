@@ -4,7 +4,7 @@ import path from "node:path";
 import { parse as parseYaml } from "yaml";
 import { checkDuplicateCaseNames, validateConfigObject, type ParsedConfig } from "./schema.js";
 
-export const CONFIG_FILENAMES = ["recoveryspec.yml", "recoveryspec.yaml"];
+export const CONFIG_FILENAMES = ["recurspec.yml", "recurspec.yaml"];
 
 export interface LoadedConfig {
   config: ParsedConfig;
@@ -19,11 +19,11 @@ export interface ConfigError extends Error {
 
 export function configNotFoundError(searchDir: string): ConfigError {
   const err = new Error(
-    "RecoverySpec could not find a configuration file.\n\nLooked for:\n  " +
+    "RecurSpec could not find a configuration file.\n\nLooked for:\n  " +
       CONFIG_FILENAMES.join("\n  ") +
       "\n\nSearched in:\n  " +
       searchDir +
-      "\n\nCreate one with:\n\n  recoveryspec init"
+      "\n\nCreate one with:\n\n  recurspec init"
   ) as ConfigError;
   err.name = "ConfigNotFoundError";
   return err;
@@ -55,7 +55,7 @@ export async function loadConfigFile(filePath: string): Promise<LoadedConfig> {
     raw = await readFile(filePath, "utf8");
   } catch {
     throw toConfigError(
-      "RecoverySpec could not read " + filePath + ".",
+      "RecurSpec could not read " + filePath + ".",
       "Check that the file exists and is readable.",
       filePath
     );
@@ -66,15 +66,15 @@ export async function loadConfigFile(filePath: string): Promise<LoadedConfig> {
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     throw toConfigError(
-      "RecoverySpec could not parse " + filePath + " as YAML.\n\n" + message,
-      "Validate the YAML syntax, e.g. with an online YAML parser, then run recoveryspec validate.",
+      "RecurSpec could not parse " + filePath + " as YAML.\n\n" + message,
+      "Validate the YAML syntax, e.g. with an online YAML parser, then run recurspec validate.",
       filePath
     );
   }
   if (typeof data !== "object" || data === null) {
     throw toConfigError(
-      "RecoverySpec config " + filePath + " must be a YAML mapping at the top level.",
-      "Start the file with version: 1 and a cases: list. Run recoveryspec init for an example.",
+      "RecurSpec config " + filePath + " must be a YAML mapping at the top level.",
+      "Start the file with version: 1 and a cases: list. Run recurspec init for an example.",
       filePath
     );
   }
@@ -82,15 +82,15 @@ export async function loadConfigFile(filePath: string): Promise<LoadedConfig> {
   if (!result.ok) {
     const lines = result.issues.map((i) => "  " + i.path + "\n    " + i.message);
     throw toConfigError(
-      "Invalid RecoverySpec configuration in " + filePath + ":\n\n" + lines.join("\n"),
-      "Run recoveryspec validate for details.",
+      "Invalid RecurSpec configuration in " + filePath + ":\n\n" + lines.join("\n"),
+      "Run recurspec validate for details.",
       filePath
     );
   }
   const dupes = checkDuplicateCaseNames(result.config);
   if (dupes.length > 0) {
     throw toConfigError(
-      "Invalid RecoverySpec configuration in " + filePath + ":\n\n  Duplicate case name(s): " + dupes.join(", "),
+      "Invalid RecurSpec configuration in " + filePath + ":\n\n  Duplicate case name(s): " + dupes.join(", "),
       "Case names must be unique. Rename the duplicated cases.",
       filePath
     );
@@ -106,8 +106,8 @@ export async function resolveConfig(cwd: string, explicit?: string): Promise<Loa
   const found = await findConfigFile(cwd, explicit);
   if (!found && explicit) {
     throw toConfigError(
-      "RecoverySpec could not find the configuration file " + explicit + ".",
-      "Check the path and try again, or run recoveryspec init to create one.",
+      "RecurSpec could not find the configuration file " + explicit + ".",
+      "Check the path and try again, or run recurspec init to create one.",
       explicit
     );
   }

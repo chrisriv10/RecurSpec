@@ -2,7 +2,7 @@ import type { RunResult } from "../types/result.js";
 
 export function renderMarkdown(result: RunResult): string {
   const lines: string[] = [];
-  lines.push("## RecoverySpec");
+  lines.push("## RecurSpec");
   lines.push("");
   const rate = result.summary.recoveryRate === null ? "n/a" : result.summary.recoveryRate.toFixed(1) + "%";
   lines.push(result.summary.passed + " / " + result.summary.total + " recovery contracts passed (recovery rate " + rate + ").");

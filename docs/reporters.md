@@ -1,8 +1,8 @@
-﻿# Reporters
+# Reporters
 
 ## Human terminal (default)
 
-`recoveryspec test` prints one line per case with the recovery chain
+`recurspec test` prints one line per case with the recovery chain
 (`deploy -> acme init -> deploy`), hop count, and duration, plus a summary with
 the recovery rate, median/max hops, and grouped failure counts.
 Honours `NO_COLOR=1`; `--verbose` adds the recovery trace.
@@ -26,7 +26,7 @@ initial output in the failure body.
 A result table for PR comments:
 
 ```markdown
-## RecoverySpec
+## RecurSpec
 
 | Result | Case | Recovery |
 |---|---|---|

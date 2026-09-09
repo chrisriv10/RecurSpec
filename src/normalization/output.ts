@@ -1,5 +1,5 @@
 const REPLACEMENTS: Array<[RegExp, string]> = [
-  [/recoveryspec-[A-Za-z0-9_-]+/g, "recoveryspec-<tmp>"],
+  [/recurspec-[A-Za-z0-9_-]+/g, "recurspec-<tmp>"],
   [/[A-Za-z]:\\Users\\[^\\]+\\AppData\\Local\\Temp\\[^\s"<>|]+/g, "<tmp>"],
   [/\/(var\/folders\/[^\s"<>|]+|tmp\/[^\s"<>|]*)/g, "<tmp>"],
   [/\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/gi, "<uuid>"],

@@ -1,4 +1,4 @@
-﻿import { parseDuration } from "../config/duration.js";
+import { parseDuration } from "../config/duration.js";
 import { checkExitCode, checkStream } from "../assertions/output.js";
 import { checkFiles } from "../assertions/files.js";
 import { checkJsonAssertions } from "../assertions/json.js";
@@ -16,7 +16,7 @@ import { applyMutations, applyWorkspaceSpec, createWorkspace } from "./workspace
 import { looksInteractive, runStep } from "./process.js";
 import { maskSecrets } from "../util/secrets.js";
 import { debugLog } from "../util/debug.js";
-import type { RecoveryCase, RecoverySpecConfig, StepSpec } from "../types/config.js";
+import type { RecoveryCase, RecurSpecConfig, StepSpec } from "../types/config.js";
 import type {
   CaseResult,
   CaseStatus,
@@ -32,7 +32,7 @@ export interface SuiteContext {
 }
 
 function slug(name: string): string {
-  return "recoveryspec-" + name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 40) + "-";
+  return "recurspec-" + name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 40) + "-";
 }
 
 function displayCommand(command: string, args: string[]): string {
@@ -65,7 +65,7 @@ export async function runStepsBestEffort(
 }
 
 export async function runCase(
-  config: RecoverySpecConfig,
+  config: RecurSpecConfig,
   kase: RecoveryCase,
   ctx: SuiteContext
 ): Promise<CaseResult> {

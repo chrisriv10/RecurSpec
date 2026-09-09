@@ -45,7 +45,7 @@ export interface ExtractSpec {
   mode?: "command" | "all";
 }
 
-export interface RecoverySpec {
+export interface RecurSpec {
   source?: "output" | "structured" | "explicit";
   format?: "json" | "text";
   extract?: ExtractSpec;
@@ -97,12 +97,12 @@ export interface RecoveryCase {
   timeout?: string;
   run: StepSpec;
   failure?: FailureSpec;
-  recovery?: RecoverySpec;
+  recovery?: RecurSpec;
   verify?: VerifySpec;
   safety?: SafetySpec;
 }
 
-export interface RecoverySpecConfig {
+export interface RecurSpecConfig {
   version: 1;
   defaults?: {
     timeout?: string;

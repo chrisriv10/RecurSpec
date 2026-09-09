@@ -1,5 +1,5 @@
-﻿#!/usr/bin/env node
-// Demo fixture CLI for RecoverySpec.
+#!/usr/bin/env node
+// Demo fixture CLI for RecurSpec.
 // Behaviour is driven by the ACME_SCENARIO env var plus state files under .acme/ in cwd.
 // Each scenario models one recovery-path shape (working, broken, ambiguous, unsafe, ...).
 import { writeFileSync, mkdirSync, existsSync } from "node:fs";

@@ -1,10 +1,10 @@
-import type { RecoveryCase, RecoverySpecConfig } from "../types/config.js";
+import type { RecoveryCase, RecurSpecConfig } from "../types/config.js";
 
 const ALWAYS_PASSTHROUGH = ["PATH"];
 const WINDOWS_PASSTHROUGH = ["SystemRoot", "WINDIR", "TEMP", "TMP", "PATHEXT", "COMSPEC"];
 
 export function buildCaseEnv(
-  config: RecoverySpecConfig,
+  config: RecurSpecConfig,
   kase: RecoveryCase,
   parent: NodeJS.ProcessEnv = process.env
 ): Record<string, string> {

@@ -1,7 +1,7 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { runCase } from "../../src/runner/runner.js";
-import type { RecoveryCase, RecoverySpecConfig } from "../../src/types/config.js";
+import type { RecoveryCase, RecurSpecConfig } from "../../src/types/config.js";
 import type { CaseResult } from "../../src/types/result.js";
 
 export const repoRoot = path.dirname(path.dirname(path.dirname(fileURLToPath(import.meta.url))));
@@ -18,7 +18,7 @@ export function baseCase(overrides: Partial<RecoveryCase> & { name: string }): R
   };
 }
 
-export function baseConfig(cases: RecoveryCase[]): RecoverySpecConfig {
+export function baseConfig(cases: RecoveryCase[]): RecurSpecConfig {
   return { version: 1, cases };
 }
 

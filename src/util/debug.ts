@@ -1,11 +1,11 @@
 export function isDebugEnabled(env: NodeJS.ProcessEnv = process.env): boolean {
   const flag = env["DEBUG"] ?? "";
-  return flag.split(",").map((s) => s.trim().toLowerCase()).includes("recoveryspec");
+  return flag.split(",").map((s) => s.trim().toLowerCase()).includes("recurspec");
 }
 
 export function debugLog(message: string, env: NodeJS.ProcessEnv = process.env): void {
   if (isDebugEnabled(env)) {
-    process.stderr.write("[recoveryspec:debug] " + message + "\n");
+    process.stderr.write("[recurspec:debug] " + message + "\n");
   }
 }
 

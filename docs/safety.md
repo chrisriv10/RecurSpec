@@ -1,6 +1,6 @@
-﻿# Safety
+# Safety
 
-RecoverySpec executes commands that failing tools suggest. The security model is:
+RecurSpec executes commands that failing tools suggest. The security model is:
 **when uncertain, refuse execution and report why. False negatives beat unsafe execution.**
 
 ## Layers
@@ -25,7 +25,7 @@ Violations produce `BLOCKED_RECOVERY` with the reason - never silent execution.
 `safety.network: allow | warn | deny` is exposed in configuration. The local backend
 cannot enforce OS-level network isolation portably, so `deny` currently emits a clear
 warning that enforcement is advisory and will be strict under a future Docker backend.
-RecoverySpec never claims isolation it does not have.
+RecurSpec never claims isolation it does not have.
 
 ## Environment hygiene
 

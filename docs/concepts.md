@@ -1,10 +1,10 @@
-﻿# Concepts
+# Concepts
 
 ## The executable recovery contract
 
 Traditional test: "Does this command emit the right error?"
 
-RecoverySpec: "If a developer follows the error instructions exactly, can they actually complete what they were trying to do?"
+RecurSpec: "If a developer follows the error instructions exactly, can they actually complete what they were trying to do?"
 
 An error message that tells a developer how to recover is treated as an **executable contract**.
 Each recovery case drives one contract through five steps:
@@ -22,7 +22,7 @@ A case never collapses to a bare boolean internally. The possible states are:
 - `PASS` - the developer got unstuck.
 - `NO_FAILURE` / `FAILURE_MISMATCH` - the intended failure state never happened (invalid contract, not a pass).
 - `NO_RECOVERY_ADVICE` - the tool gave no executable advice.
-- `AMBIGUOUS_RECOVERY` - several equally plausible commands; RecoverySpec refuses to guess.
+- `AMBIGUOUS_RECOVERY` - several equally plausible commands; RecurSpec refuses to guess.
 - `BLOCKED_RECOVERY` - the advice violates the safety policy.
 - `RECOVERY_COMMAND_FAILED` - the advice ran but failed.
 - `PARTIAL_RECOVERY` - the error changed but the task still fails.

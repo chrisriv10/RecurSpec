@@ -1,4 +1,4 @@
-import { runRecoverySpec } from "../../index.js";
+import { runRecurSpec } from "../../index.js";
 import { renderTerminal } from "../../reporting/terminal.js";
 import { renderJson } from "../../reporting/json-reporter.js";
 import { renderJUnit } from "../../reporting/junit.js";
@@ -27,11 +27,11 @@ export async function testCommand(cwd: string, options: TestCommandOptions): Pro
     process.stderr.write("Unknown format " + JSON.stringify(format) + ". Expected human, json, junit, or markdown.\n");
     return 2;
   }
-  if (options.debug) process.env["DEBUG"] = "recoveryspec";
+  if (options.debug) process.env["DEBUG"] = "recurspec";
 
   let result;
   try {
-    result = await runRecoverySpec({
+    result = await runRecurSpec({
       cwd,
       configPath: options.config,
       filterCases: options.cases,

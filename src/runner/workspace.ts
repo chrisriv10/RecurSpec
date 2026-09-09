@@ -17,7 +17,7 @@ function assertSafeTarget(target: string, kind: string): void {
   }
 }
 
-export async function createWorkspace(prefix = "recoveryspec-"): Promise<PreparedWorkspace> {
+export async function createWorkspace(prefix = "recurspec-"): Promise<PreparedWorkspace> {
   const dir = await mkdtemp(path.join(os.tmpdir(), prefix));
   return {
     dir,

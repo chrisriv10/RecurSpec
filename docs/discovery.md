@@ -1,6 +1,6 @@
-﻿# Discovery (experimental)
+# Discovery (experimental)
 
-`recoveryspec discover` helps maintainers find likely recoverable failures.
+`recurspec discover` helps maintainers find likely recoverable failures.
 It is intentionally conservative: it only drafts candidates, never authoritative contracts.
 
 Configure the base command:
@@ -14,7 +14,7 @@ discover:
 Discovery applies safe mutations (empty workspace, removed config files, corrupted
 JSON/YAML, removed env vars), runs the command, and keeps failures that contain
 apparent recovery advice. Output lists candidates; `--write` emits
-`recoveryspec.discovered.yml` drafts for maintainer review.
+`recurspec.discovered.yml` drafts for maintainer review.
 
 Every generated case must be reviewed before it is trusted: discovery shows what a
-tool *claims*, while `recoveryspec test` verifies whether the claim works.
+tool *claims*, while `recurspec test` verifies whether the claim works.

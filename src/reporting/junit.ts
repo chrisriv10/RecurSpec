@@ -12,10 +12,10 @@ export function renderJUnit(result: RunResult): string {
   const lines: string[] = [];
   lines.push("<?xml version=\"1.0\" encoding=\"UTF-8\"?>");
   lines.push(
-    "<testsuite name=\"RecoverySpec\" tests=\"" + result.summary.total + "\" failures=\"" + result.summary.failed + "\" errors=\"0\" skipped=\"0\">"
+    "<testsuite name=\"RecurSpec\" tests=\"" + result.summary.total + "\" failures=\"" + result.summary.failed + "\" errors=\"0\" skipped=\"0\">"
   );
   for (const c of result.cases) {
-    lines.push("  <testcase classname=\"recoveryspec\" name=\"" + escapeXml(c.name) + "\" time=\"" + (c.durationMs / 1000).toFixed(3) + "\">");
+    lines.push("  <testcase classname=\"recurspec\" name=\"" + escapeXml(c.name) + "\" time=\"" + (c.durationMs / 1000).toFixed(3) + "\">");
     if (c.status !== "PASS") {
       lines.push("    <failure message=\"" + escapeXml(c.status + ": " + c.name) + "\">" + escapeXml(failureBody(c)) + "</failure>");
     }

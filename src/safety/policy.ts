@@ -1,4 +1,4 @@
-import type { RecoveryCase, RecoverySpecConfig, SafetySpec } from "../types/config.js";
+import type { RecoveryCase, RecurSpecConfig, SafetySpec } from "../types/config.js";
 
 export interface EffectiveSafety {
   shell: boolean;
@@ -11,7 +11,7 @@ export interface EffectiveSafety {
   caseDenyCommands?: string[];
 }
 
-export function effectiveSafety(config: RecoverySpecConfig, kase: RecoveryCase): EffectiveSafety {
+export function effectiveSafety(config: RecurSpecConfig, kase: RecoveryCase): EffectiveSafety {
   const globalSafety: SafetySpec = config.safety ?? {};
   const caseSafety: SafetySpec = kase.safety ?? {};
   const recovery = kase.recovery ?? {};

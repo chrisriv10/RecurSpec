@@ -23,7 +23,7 @@ export interface DiscoveredCandidate {
 export async function discoverCandidates(options: DiscoverOptions): Promise<DiscoveredCandidate[]> {
   const found: DiscoveredCandidate[] = [];
   for (const mutation of SAFE_DISCOVERY_MUTATIONS) {
-    const dir = await mkdtemp(path.join(os.tmpdir(), "recoveryspec-discover-"));
+    const dir = await mkdtemp(path.join(os.tmpdir(), "recurspec-discover-"));
     try {
       for (const [rel, content] of Object.entries(mutation.apply)) {
         await mkdir(path.dirname(path.join(dir, rel)), { recursive: true });

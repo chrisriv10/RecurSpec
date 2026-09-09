@@ -38,19 +38,19 @@ error -> advice -> recovery -> retry -> result
 Requires Node.js 22+ and pnpm.
 
 ```bash
-pnpm add -D recoveryspec
+pnpm add -D recurspec
 ```
 
 ## Quick start
 
 ```bash
-recoveryspec init
-# edit recoveryspec.yml to describe your CLI failure + recovery
-recoveryspec validate
-recoveryspec test
+recurspec init
+# edit recurspec.yml to describe your CLI failure + recovery
+recurspec validate
+recurspec test
 ```
 
-`init` writes a starter `recoveryspec.yml` with one example contract:
+`init` writes a starter `recurspec.yml` with one example contract:
 
 ```yaml
 version: 1
@@ -77,12 +77,12 @@ cases:
 
 ## Example output
 
-`pnpm demo` runs the showcase suite in `recoveryspec.yml` against the bundled
+`pnpm demo` runs the showcase suite in `recurspec.yml` against the bundled
 `demo/acme-cli` fixture CLI, which mixes working and deliberately broken recovery
 paths. Real output (timings vary, exit code `1` because broken paths are caught by design):
 
 ```text
-RecoverySpec v0.1.0
+RecurSpec v0.1.0
 
 ✓ User runs deploy before initializing a project
   node demo/acme-cli/acme.mjs deploy → node demo/acme-cli/acme.mjs init → node demo/acme-cli/acme.mjs deploy
@@ -127,7 +127,7 @@ RecoverySpec v0.1.0
   node demo/acme-cli/acme.mjs deploy → node demo/acme-cli/acme.mjs init → node demo/acme-cli/acme.mjs deploy
   recovered in 1 hop · 311ms
 
-RecoverySpec
+RecurSpec
 
 8 recovery contracts
 
@@ -256,7 +256,7 @@ safety:
 Recovery paths can run alongside the rest of your test suite.
 
 ```yaml
-name: RecoverySpec
+name: RecurSpec
 on:
   pull_request:
   push:
@@ -270,7 +270,7 @@ jobs:
           node-version: 22
       - run: corepack enable
       - run: pnpm install --frozen-lockfile
-      - run: pnpm recoveryspec test
+      - run: pnpm recurspec test
 ```
 
 RecurSpec exits with a non-zero status when a recovery contract fails
@@ -279,23 +279,23 @@ RecurSpec exits with a non-zero status when a recovery contract fails
 Machine-readable reporters are available for CI and tooling:
 
 ```bash
-recoveryspec test --format json
-recoveryspec test --format junit
-recoveryspec test --format markdown
+recurspec test --format json
+recurspec test --format junit
+recurspec test --format markdown
 ```
 
 ## Commands
 
 ```bash
-recoveryspec test [--case NAME] [--tag TAG] [--format human|json|junit|markdown] [--verbose] [--fail-fast] [--seed N]
-recoveryspec validate
-recoveryspec init [--force]
-recoveryspec explain <case>
-recoveryspec discover [--write]
+recurspec test [--case NAME] [--tag TAG] [--format human|json|junit|markdown] [--verbose] [--fail-fast] [--seed N]
+recurspec validate
+recurspec init [--force]
+recurspec explain <case>
+recurspec discover [--write]
 ```
 
-Run `recoveryspec --help` for all options. Programmatic API:
-`import { runRecoverySpec } from "recoveryspec"`.
+Run `recurspec --help` for all options. Programmatic API:
+`import { runRecurSpec } from "recurspec"`.
 
 See `docs/` for concepts, configuration, extraction, safety, reporters, and discovery.
 

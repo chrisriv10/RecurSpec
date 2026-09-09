@@ -27,7 +27,7 @@ function chainLine(c: CaseResult): string {
 export function renderTerminal(result: RunResult, options: { verbose?: boolean; version?: string } = {}): string {
   const colors = isColorSupported();
   const lines: string[] = [];
-  const title = "RecoverySpec" + (options.version ? " v" + options.version : ""); lines.push(colors ? pc.bold(title) : title);
+  const title = "RecurSpec" + (options.version ? " v" + options.version : ""); lines.push(colors ? pc.bold(title) : title);
   lines.push("");
 
   for (const c of result.cases) {
@@ -52,7 +52,7 @@ export function renderTerminal(result: RunResult, options: { verbose?: boolean; 
   }
 
   const s = result.summary;
-  lines.push("RecoverySpec");
+  lines.push("RecurSpec");
   lines.push("");
   lines.push(s.total + " recovery contracts");
   lines.push("");

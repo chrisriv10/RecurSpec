@@ -61,7 +61,7 @@ export async function explainCommand(cwd: string, caseName: string, explicit?: s
     for (const s of verify.commands) lines.push("    - " + s.command + " " + (s.args ?? []).join(" "));
   }
   lines.push("");
-  lines.push("(This command only explains the contract. Run `recoveryspec test --case " + kase.name + "` to execute it.)");
+  lines.push("(This command only explains the contract. Run `recurspec test --case " + kase.name + "` to execute it.)");
   process.stdout.write(lines.join("\n") + "\n");
   return 0;
 }

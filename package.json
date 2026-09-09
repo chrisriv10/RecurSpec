@@ -1,5 +1,5 @@
 {
-  "name": "recoveryspec",
+  "name": "recurspec",
   "version": "0.1.0",
   "description": "Test whether your error messages actually get users unstuck.",
   "type": "module",
@@ -24,7 +24,7 @@
   },
   "packageManager": "pnpm@9.12.0",
   "bin": {
-    "recoveryspec": "./dist/cli.js"
+    "recurspec": "./dist/cli.js"
   },
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",

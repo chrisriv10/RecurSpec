@@ -1,11 +1,11 @@
-﻿import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import { normalizeOutput } from "../../src/normalization/output.js";
 import { LoopDetector } from "../../src/recovery/loop-detection.js";
 
 describe("normalizeOutput", () => {
   it("normalizes temp dirs so reruns compare equal", () => {
-    const a = normalizeOutput("failed in /tmp/recoveryspec-123/.acme");
-    const b = normalizeOutput("failed in /tmp/recoveryspec-456/.acme");
+    const a = normalizeOutput("failed in /tmp/recurspec-123/.acme");
+    const b = normalizeOutput("failed in /tmp/recurspec-456/.acme");
     expect(a).toBe(b);
   });
 
@@ -18,8 +18,8 @@ describe("normalizeOutput", () => {
 describe("LoopDetector", () => {
   it("detects a repeated command plus normalized error", () => {
     const detector = new LoopDetector();
-    expect(detector.check("acme", ["login"], "err in /tmp/recoveryspec-1")).toBe(false);
-    expect(detector.check("acme", ["login"], "err in /tmp/recoveryspec-2")).toBe(true);
+    expect(detector.check("acme", ["login"], "err in /tmp/recurspec-1")).toBe(false);
+    expect(detector.check("acme", ["login"], "err in /tmp/recurspec-2")).toBe(true);
   });
 
   it("treats different errors as different states", () => {

@@ -1,10 +1,10 @@
 import { resolveConfig } from "./config/loader.js";
 import { runCase, runStepsBestEffort } from "./runner/runner.js";
 import { buildRunResult } from "./reporting/summary.js";
-import type { RecoverySpecConfig } from "./types/config.js";
+import type { RecurSpecConfig } from "./types/config.js";
 import type { CaseResult, RunResult } from "./types/result.js";
 
-export type { RecoverySpecConfig, RecoveryCase } from "./types/config.js";
+export type { RecurSpecConfig, RecoveryCase } from "./types/config.js";
 export type { CaseResult, RunResult, RunSummary, CaseStatus, ExecutedCommand, ExtractedAdvice } from "./types/result.js";
 export type { RecoveryNode, RecoveryEdge, RecoveryTrace } from "./types/recovery.js";
 
@@ -19,10 +19,10 @@ export interface RunOptions {
 }
 
 export interface FilteredSelection {
-  config: RecoverySpecConfig;
+  config: RecurSpecConfig;
   configDir: string;
   configPath: string;
-  cases: RecoverySpecConfig["cases"];
+  cases: RecurSpecConfig["cases"];
 }
 
 export async function selectCases(cwd: string, options: RunOptions = {}): Promise<FilteredSelection> {
@@ -39,7 +39,7 @@ export async function selectCases(cwd: string, options: RunOptions = {}): Promis
   return { config: loaded.config, configDir: loaded.configDir, configPath: loaded.configPath, cases };
 }
 
-export async function runRecoverySpec(options: RunOptions = {}): Promise<RunResult> {
+export async function runRecurSpec(options: RunOptions = {}): Promise<RunResult> {
   const cwd = options.cwd ?? process.cwd();
   const { config, configDir, cases } = await selectCases(cwd, options);
   const results: CaseResult[] = [];

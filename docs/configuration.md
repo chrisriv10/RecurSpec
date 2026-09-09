@@ -1,7 +1,7 @@
-﻿# Configuration
+# Configuration
 
-RecoverySpec reads `recoveryspec.yml` (or `recoveryspec.yaml`) from the current directory.
-Validate without running: `recoveryspec validate`. Scaffold a starter file: `recoveryspec init`.
+RecurSpec reads `recurspec.yml` (or `recurspec.yaml`) from the current directory.
+Validate without running: `recurspec validate`. Scaffold a starter file: `recurspec init`.
 
 ## Top-level shape
 
