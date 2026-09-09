@@ -1,0 +1,187 @@
+﻿# RecoverySpec showcase: if a developer follows the error instructions exactly,
+# can they actually complete what they were trying to do?
+# Run with: recoveryspec test   (or: pnpm demo)
+
+version: 1
+
+defaults:
+  timeout: 10s
+  env:
+    CI: "1"
+
+safety:
+  shell: false
+  network: warn
+
+cases:
+  - name: missing-project-config
+    description: User runs deploy before initializing a project
+    workspace:
+      copy:
+        - demo/acme-cli/**
+    run:
+      command: node
+      args: [demo/acme-cli/acme.mjs, deploy]
+    failure:
+      exitCode: nonzero
+      stderr:
+        contains: "Project not initialized"
+    recovery:
+      source: output
+      prefer: [stderr, stdout]
+      extract:
+        mode: command
+    verify:
+      rerunOriginal: true
+      exitCode: 0
+      stdout:
+        contains: "Deployed successfully"
+      files:
+        exists:
+          - .acme/config.json
+      json:
+        path: .acme/config.json
+        assertions:
+          initialized: true
+          project: test
+
+  - name: expired-credentials
+    description: Publishing with an expired session
+    workspace:
+      copy:
+        - demo/acme-cli/**
+    run:
+      command: node
+      args: [demo/acme-cli/acme.mjs, publish]
+    failure:
+      exitCode: nonzero
+      stderr:
+        contains: "Authentication required"
+    recovery:
+      source: output
+    verify:
+      rerunOriginal: true
+      exitCode: 0
+      stdout:
+        contains: "Published successfully"
+
+  - name: two-step-onboarding
+    description: Login then org selection, chained from tool output
+    env:
+      ACME_SCENARIO: two-step
+    workspace:
+      copy:
+        - demo/acme-cli/**
+    run:
+      command: node
+      args: [demo/acme-cli/acme.mjs, deploy]
+    failure:
+      exitCode: nonzero
+      stderr:
+        contains: "Authentication required"
+    recovery:
+      source: output
+      maxHops: 3
+    verify:
+      rerunOriginal: true
+      exitCode: 0
+      stdout:
+        contains: "Deployed successfully"
+
+  - name: missing-organization
+    description: Recovery succeeds but the original task still fails (dead end)
+    env:
+      ACME_SCENARIO: partial
+    workspace:
+      copy:
+        - demo/acme-cli/**
+    run:
+      command: node
+      args: [demo/acme-cli/acme.mjs, publish]
+    failure:
+      exitCode: nonzero
+      stderr:
+        contains: "Authentication required"
+    recovery:
+      source: output
+    verify:
+      rerunOriginal: true
+      exitCode: 0
+
+  - name: stale-advice
+    description: The tool suggests a command that no longer exists
+    env:
+      ACME_SCENARIO: stale
+    workspace:
+      copy:
+        - demo/acme-cli/**
+    run:
+      command: node
+      args: [demo/acme-cli/acme.mjs, deploy]
+    failure:
+      exitCode: nonzero
+      stderr:
+        contains: "Run `node demo/acme-cli/acme.mjs setup`"
+    recovery:
+      source: output
+    verify:
+      rerunOriginal: true
+      exitCode: 0
+
+  - name: unsafe-advice
+    description: The tool suggests a dangerous command that must be blocked
+    env:
+      ACME_SCENARIO: unsafe
+    workspace:
+      copy:
+        - demo/acme-cli/**
+    run:
+      command: node
+      args: [demo/acme-cli/acme.mjs, deploy]
+    failure:
+      exitCode: nonzero
+    recovery:
+      source: output
+    verify:
+      rerunOriginal: true
+      exitCode: 0
+
+  - name: recovery-loop
+    description: Login and configure point at each other forever
+    env:
+      ACME_SCENARIO: loop
+    workspace:
+      copy:
+        - demo/acme-cli/**
+    run:
+      command: node
+      args: [demo/acme-cli/acme.mjs, login]
+    failure:
+      exitCode: nonzero
+    recovery:
+      source: output
+      maxHops: 5
+    verify:
+      rerunOriginal: true
+      exitCode: 0
+
+  - name: structured-hint
+    description: Machine-readable JSON recovery hint
+    env:
+      ACME_SCENARIO: structured
+    workspace:
+      copy:
+        - demo/acme-cli/**
+    run:
+      command: node
+      args: [demo/acme-cli/acme.mjs, deploy]
+    failure:
+      exitCode: nonzero
+    recovery:
+      source: structured
+      format: json
+    verify:
+      rerunOriginal: true
+      exitCode: 0
+      stdout:
+        contains: "Deployed successfully"

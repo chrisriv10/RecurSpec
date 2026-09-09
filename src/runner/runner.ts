@@ -254,7 +254,22 @@ export async function runCase(
       return { result: null, blocked: check.reason ?? "Blocked by safety policy." };
     }
     const step: StepSpec = stdin ? { command, args, stdin } : { command, args };
-    const result = await runOne(step);
+    let result: ExecutedCommand;
+    try {
+      result = await runOne(step);
+    } catch (err) {
+      result = {
+        command,
+        args,
+        exitCode: null,
+        stdout: "",
+        stderr: "Could not execute recovery command: " + String((err as Error).message),
+        durationMs: 0,
+        timedOut: false,
+        cwd: ""
+      };
+    }
+
     recoverySteps.push(result);
     hops = recoverySteps.length;
     graph.addNode("recovery_result", displayCommand(command, args) + " -> exit " + String(result.exitCode));
