@@ -1,3 +1,5 @@
+const ESCAPABLE_AFTER_BACKSLASH = new Set([" ", "\t", "\n", "\r", "\"", "\u0027", "\\", "$", "`"]);
+
 export function splitShellWords(input: string): string[] | null {
   const tokens: string[] = [];
   let current = "";
@@ -15,7 +17,16 @@ export function splitShellWords(input: string): string[] | null {
       continue;
     }
     if (ch === "\\" && !inSingle) {
-      escaped = true;
+      // A backslash escapes whitespace, quotes, and other shell-significant
+      // characters. Anywhere else (notably Windows path separators) it is a
+      // literal character, so `C:\tools\app.exe` and `node -e "a\nb"` survive.
+      const next = i + 1 < input.length ? (input[i + 1] as string) : undefined;
+      if (next !== undefined && ESCAPABLE_AFTER_BACKSLASH.has(next)) {
+        escaped = true;
+        continue;
+      }
+      current += ch;
+      hasToken = true;
       continue;
     }
     if (ch === "\u0027" && !inDouble) {

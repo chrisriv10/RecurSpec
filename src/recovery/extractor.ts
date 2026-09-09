@@ -31,7 +31,20 @@ const INLINE_PATTERNS: Array<{ re: RegExp; pattern: string; confidence: number }
 ];
 
 function stripWrapping(text: string): string {
-  return text.trim().replace(/^["\u0027]+|["\u0027.,;:!]+$/g, "").trim();
+  // Strip trailing punctuation first, then surrounding quotes only in
+  // matched pairs, so quoted values at the end survive intact.
+  let out = text.trim().replace(/[.,;:!]+$/g, "").trim();
+  for (;;) {
+    const startsDouble = out.startsWith("\"");
+    const startsSingle = out.startsWith("\u0027");
+    const endsDouble = out.endsWith("\"");
+    const endsSingle = out.endsWith("\u0027");
+    if (out.length >= 2 && ((startsDouble && endsDouble) || (startsSingle && endsSingle))) {
+      out = out.slice(1, -1).trim();
+    } else {
+      return out;
+    }
+  }
 }
 
 function harvestFromLine(line: string, lineNumber: number, hits: RawHit[]): void {
@@ -89,11 +102,37 @@ export function stripAnsi(text: string): string {
   return text.replace(ANSI_PATTERN, "");
 }
 
+const CONT_LEADS: Array<{ re: RegExp; pattern: string; confidence: number }> = [
+  { re: /^\s*run\s*:\s*$/i, pattern: "run-colon-continuation", confidence: 0.85 },
+  { re: /^\s*try\s*:\s*$/i, pattern: "try-colon-continuation", confidence: 0.85 },
+  { re: /^\s*execute\s*:\s*$/i, pattern: "execute-colon-continuation", confidence: 0.85 },
+  { re: /to\s+continue,?\s+(?:run|execute)\s*:\s*$/i, pattern: "to-continue-run-continuation", confidence: 0.85 },
+  { re: /to\s+fix\s+this,?\s+run\s*:\s*$/i, pattern: "to-fix-run-continuation", confidence: 0.85 }
+];
+
+function harvestContinuations(lines: string[], hits: RawHit[]): void {
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i] as string;
+    const lead = CONT_LEADS.find((c) => c.re.test(line));
+    if (!lead) continue;
+    for (let j = i + 1; j < Math.min(i + 4, lines.length); j++) {
+      const next = (lines[j] as string).trim();
+      if (next.length === 0) continue;
+      if (next.length <= 300) {
+        hits.push({ raw: next, pattern: lead.pattern, confidence: lead.confidence, line: j + 1 });
+      }
+      break;
+    }
+  }
+}
+
 function collectForStream(text: string, source: "stderr" | "stdout", options: ExtractionOptions): ExtractedAdvice[] {
   const clean = stripAnsi(text);
   const hits: RawHit[] = [];
   harvestFencedBlocks(clean, hits);
-  clean.split("\n").forEach((line, idx) => harvestFromLine(line, idx + 1, hits));
+  const lines = clean.split("\n");
+  lines.forEach((line, idx) => harvestFromLine(line, idx + 1, hits));
+  harvestContinuations(lines, hits);
   const out: ExtractedAdvice[] = [];
   const seen = new Set<string>();
   for (const hit of hits) {
