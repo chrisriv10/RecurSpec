@@ -47,8 +47,8 @@ export async function runStep(step: StepSpec, options: RunStepOptions): Promise<
       command: step.command,
       args,
       exitCode: result.exitCode ?? null,
-      stdout: result.stdout ?? "",
-      stderr: result.stderr ?? "",
+      stdout: typeof result.stdout === "string" ? result.stdout : String(result.stdout ?? ""),
+      stderr: typeof result.stderr === "string" ? result.stderr : String(result.stderr ?? ""),
       durationMs: Date.now() - started,
       timedOut: false,
       cwd

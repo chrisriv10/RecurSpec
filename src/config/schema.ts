@@ -172,10 +172,9 @@ function formatPath(path: Array<string | number>): string {
   return out;
 }
 
-function redactReceived(issue: { code: string } & Record<string, unknown>): unknown {
-  const anyIssue = issue as { received?: unknown };
-  if ("received" in anyIssue) {
-    const value = anyIssue.received;
+function redactReceived(issue: unknown): unknown {
+  if (typeof issue === "object" && issue !== null && "received" in issue) {
+    const value = (issue as { received?: unknown }).received;
     if (typeof value === "string" && value.length > 120) return value.slice(0, 120) + "...";
     return value;
   }

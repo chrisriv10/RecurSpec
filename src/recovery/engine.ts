@@ -55,42 +55,54 @@ export function deriveRecoveryPlan(
 
 export function parseStructuredRecovery(stdout: string, stderr: string): ExtractedAdvice[] {
   const out: ExtractedAdvice[] = [];
-  for (const [text, source] of [[stdout, "stdout"], [stderr, "stderr"]] as const) {
+  const streams: Array<{ text: string; source: "stderr" | "stdout" }> = [
+    { text: stdout, source: "stdout" },
+    { text: stderr, source: "stderr" }
+  ];
+  for (const { text, source } of streams) {
     const trimmed = text.trim();
     if (!trimmed.startsWith("{")) continue;
+    let parsed: unknown;
     try {
-      const parsed = JSON.parse(trimmed) as {
-        recovery?: { commands?: Array<string[] | { command?: string; args?: string[] }> };
-      };
-      const commands = parsed.recovery?.commands ?? [];
-      commands.forEach((entry, idx) => {
-        if (Array.isArray(entry) && entry.length > 0 && typeof entry[0] === "string") {
-          const [command, ...args] = entry as string[];
+      parsed = JSON.parse(trimmed);
+    } catch {
+      continue;
+    }
+    if (typeof parsed !== "object" || parsed === null) continue;
+    const recovery = (parsed as { recovery?: unknown }).recovery;
+    if (typeof recovery !== "object" || recovery === null) continue;
+    const commands = (recovery as { commands?: unknown }).commands;
+    if (!Array.isArray(commands)) continue;
+    commands.forEach((entry: unknown, idx: number) => {
+      if (Array.isArray(entry) && entry.length > 0 && typeof entry[0] === "string") {
+        const parts = entry.map(String);
+        const cmd = parts[0] as string;
+        const args = parts.slice(1);
+        out.push({
+          command: cmd,
+          args,
+          raw: cmd + " " + args.join(" "),
+          source,
+          line: 1,
+          confidence: 1,
+          pattern: "structured-json"
+        });
+      } else if (typeof entry === "object" && entry !== null) {
+        const obj = entry as { command?: unknown; args?: unknown };
+        if (typeof obj.command === "string") {
+          const args = Array.isArray(obj.args) ? obj.args.map(String) : [];
           out.push({
-            command: command as string,
-            args: args.map(String),
-            raw: (command as string) + " " + args.join(" "),
-            source,
-            line: 1,
-            confidence: 1,
-            pattern: "structured-json"
-          });
-        } else if (typeof entry === "object" && entry !== null && typeof entry.command === "string") {
-          out.push({
-            command: entry.command,
-            args: (entry.args ?? []).map(String),
-            raw: entry.command + " " + (entry.args ?? []).join(" "),
+            command: obj.command,
+            args,
+            raw: obj.command + " " + args.join(" "),
             source,
             line: 1 + idx,
             confidence: 1,
             pattern: "structured-json"
           });
         }
-      });
-    } catch {
-      continue;
-    }
+      }
+    });
   }
   return out;
 }
-
