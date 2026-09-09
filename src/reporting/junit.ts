@@ -1,7 +1,11 @@
 import type { RunResult, CaseResult } from "../types/result.js";
 
+// Control characters below 0x20 (except tab/LF/CR) are illegal in XML 1.0 and are dropped.
+// eslint-disable-next-line no-control-regex -- stripping illegal XML control chars is the point.
+const ILLEGAL_XML: RegExp = /[\x00-\x08\x0B\x0C\x0E-\x1F]/g;
+
 function escapeXml(text: string): string {
-  return text
+  return text.replace(ILLEGAL_XML, "")
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")

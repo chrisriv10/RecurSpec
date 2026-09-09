@@ -1,4 +1,4 @@
-import { resolveConfig } from "./config/loader.js";
+import { resolveConfig, toConfigError } from "./config/loader.js";
 import { runCase, runStepsBestEffort } from "./runner/runner.js";
 import { buildRunResult } from "./reporting/summary.js";
 import type { RecurSpecConfig } from "./types/config.js";
@@ -35,6 +35,15 @@ export async function selectCases(cwd: string, options: RunOptions = {}): Promis
   if (options.filterTags && options.filterTags.length > 0) {
     const tags = new Set(options.filterTags);
     cases = cases.filter((c) => (c.tags ?? []).some((t) => tags.has(t)));
+  }
+  if (cases.length === 0 && ((options.filterCases?.length ?? 0) > 0 || (options.filterTags?.length ?? 0) > 0)) {
+    throw toConfigError(
+      "No cases matched the requested filter.\n\nAvailable cases:\n" +
+        loaded.config.cases.map((c) => "  - " + c.name).join("\n") +
+        "\n\nAdjust --case/--tag or drop the filter to run everything.",
+      undefined,
+      loaded.configPath
+    );
   }
   return { config: loaded.config, configDir: loaded.configDir, configPath: loaded.configPath, cases };
 }

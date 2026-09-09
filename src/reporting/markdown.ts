@@ -13,9 +13,13 @@ export function renderMarkdown(result: RunResult): string {
     const icon = c.status === "PASS" ? "✅" : "❌";
     const chain = [c.originalCommand, ...c.recoverySteps.map((s) => displayShort(s.command, s.args))].join(" → ");
     const recovery = c.status === "PASS" ? "`" + chain + "`" : c.status + " after `" + chain + "`";
-    lines.push("| " + icon + " | " + c.name + " | " + recovery + " |");
+    lines.push("| " + icon + " | " + escCell(c.name) + " | " + escCell(recovery) + " |");
   }
   return lines.join("\n") + "\n";
+}
+
+function escCell(text: string): string {
+  return text.replace(/\|/g, "\\|").replace(/`/g, "'").replace(/\r?\n/g, "<br/>");
 }
 
 function displayShort(command: string, args: string[]): string {

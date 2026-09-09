@@ -1,4 +1,4 @@
-﻿import { execa, type Options as ExecaOptions } from "execa";
+import { execa, type Options as ExecaOptions } from "execa";
 import { parseDuration } from "../config/duration.js";
 import type { ExecutedCommand } from "../types/result.js";
 import type { StepSpec } from "../types/config.js";
@@ -35,6 +35,12 @@ export async function runStep(step: StepSpec, options: RunStepOptions): Promise<
     cwd,
     env: { ...(options.env ?? {}), ...(step.env ?? {}) } as Record<string, string>,
     timeout: timeoutMs,
+    // SIGTERM first so children can clean up, then SIGKILL so a hung
+    // process can never outlive its timeout.
+    killSignal: "SIGTERM",
+    forceKillAfterDelay: 5000,
+    // 100 MiB cap: large diagnostics must not exhaust memory or deadlock.
+    maxBuffer: 100 * 1024 * 1024,
     reject: false,
     stripFinalNewline: false,
     input: stdinInput,

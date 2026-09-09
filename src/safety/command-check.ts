@@ -24,8 +24,32 @@ const ALWAYS_DANGEROUS = new Set([
   "poweroff",
   "mkfs",
   "dd",
-  "format"
+  "format",
+  "diskpart"
 ]);
+
+// Delete-family commands get the same treatment as rm: relative, in-workspace
+// targets are allowed, but filesystem roots, absolute paths, and parent
+// traversal are refused.
+const DELETE_COMMANDS = new Set(["rm", "del", "erase", "rmdir", "rd"]);
+
+const SHELL_STRING_FLAGS: Record<string, RegExp> = {
+  sh: /^-c$/,
+  bash: /^-c$/,
+  dash: /^-c$/,
+  zsh: /^-c$/,
+  fish: /^-c$/,
+  powershell: /^(-c|-command|-encodedcommand)$/i,
+  pwsh: /^(-c|-command|-encodedcommand)$/i,
+  cmd: /^\/[ck]$/i
+};
+
+function isAbsoluteTarget(arg: string): boolean {
+  const t = arg.trim().replace(/^["']+|["']+$/g, "");
+  // Windows-style short flags (/s, /q, /f) are not paths.
+  if (/^\/?[A-Za-z]{1,3}$/.test(t)) return false;
+  return t.startsWith("/") || /^[A-Za-z]:[\\/]/.test(t) || t.startsWith("\\\\") || t === "~" || t.startsWith("~/");
+}
 
 function hasShellMetacharacters(text: string): { found: string | null } {
   const patterns: Array<[RegExp, string]> = [
@@ -35,6 +59,7 @@ function hasShellMetacharacters(text: string): { found: string | null } {
     [/\|\s*bash\b/, "piping into a shell"],
     [/\bcurl\b.*\|\s*sh\b/, "curl piped into a shell"],
     [/\bwget\b.*\|\s*sh\b/, "wget piped into a shell"],
+    [/\|\s*(powershell|pwsh|python3?|perl|ruby|php|node)\b/, "piping into an interpreter"],
     [/Invoke-Expression/, "PowerShell Invoke-Expression"],
     [/\/c\s+format\b/i, "shell format command"]
   ];
@@ -75,13 +100,21 @@ export function checkCommandSafety(command: string, args: string[], options: Saf
     return { ok: false, reason: "Command " + JSON.stringify(exe) + " is never allowed (dangerous system command)." };
   }
 
-  if (lowerBase === "rm") {
+  const shellFlag = SHELL_STRING_FLAGS[lowerBase];
+  if (shellFlag && args.some((a) => shellFlag.test(a))) {
+    return { ok: false, reason: "Executing a code string via " + JSON.stringify(exe) + " is blocked. Only fixed argv commands run without a shell." };
+  }
+
+  if (DELETE_COMMANDS.has(lowerBase)) {
     const joined = args.join(" ");
     if (/(^|\s)(\/|\*)(($|\s))/.test(joined) || args.includes("-rf") && (args.includes("/") || args.includes("/*"))) {
-      return { ok: false, reason: "rm with a filesystem-root target is blocked." };
+      return { ok: false, reason: exe + " with a filesystem-root target is blocked." };
     }
     if (args.some((a) => a === ".." || a.includes("../") || a.includes("..\\"))) {
-      return { ok: false, reason: "rm with parent-directory traversal is blocked." };
+      return { ok: false, reason: exe + " with parent-directory traversal is blocked." };
+    }
+    if (args.some(isAbsoluteTarget)) {
+      return { ok: false, reason: exe + " with an absolute path target is blocked. Only workspace-relative paths are allowed." };
     }
   }
 
@@ -103,8 +136,8 @@ export function checkCommandSafety(command: string, args: string[], options: Saf
       return { ok: false, reason: "Shell redirection is blocked by default. Set safety.allowRedirection: true to opt in." };
     }
     for (const token of [exe, ...args]) {
-      if (token.includes("\n") || token.includes("\0")) {
-        return { ok: false, reason: "Command contains embedded newlines or null bytes." };
+      if (token.includes("\n") || token.includes("\r") || token.includes("\0")) {
+        return { ok: false, reason: "Command contains embedded line breaks or null bytes." };
       }
     }
   }

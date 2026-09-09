@@ -23,7 +23,7 @@ export function configNotFoundError(searchDir: string): ConfigError {
       CONFIG_FILENAMES.join("\n  ") +
       "\n\nSearched in:\n  " +
       searchDir +
-      "\n\nCreate one with:\n\n  recurspec init"
+      "\n\nCreate one with:\n\n  Run `recurspec init` to scaffold a starter config."
   ) as ConfigError;
   err.name = "ConfigNotFoundError";
   return err;

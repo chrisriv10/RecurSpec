@@ -1,4 +1,4 @@
-﻿import { tokenizeCommandLine } from "./tokenizer.js";
+import { tokenizeCommandLine } from "./tokenizer.js";
 import type { ExtractedAdvice } from "../types/result.js";
 
 interface RawHit {
@@ -82,13 +82,23 @@ export interface ExtractionOptions {
   mode?: "command" | "all";
 }
 
+// eslint-disable-next-line no-control-regex -- ANSI escapes are control characters by definition.
+const ANSI_PATTERN = /\u001b\[[0-9;?]*[A-Za-z]|\u001b\][^\u0007]*(?:\u0007|\u001b\\)|\u001b[@-_]/g;
+
+export function stripAnsi(text: string): string {
+  return text.replace(ANSI_PATTERN, "");
+}
+
 function collectForStream(text: string, source: "stderr" | "stdout", options: ExtractionOptions): ExtractedAdvice[] {
+  const clean = stripAnsi(text);
   const hits: RawHit[] = [];
-  harvestFencedBlocks(text, hits);
-  text.split("\n").forEach((line, idx) => harvestFromLine(line, idx + 1, hits));
+  harvestFencedBlocks(clean, hits);
+  clean.split("\n").forEach((line, idx) => harvestFromLine(line, idx + 1, hits));
   const out: ExtractedAdvice[] = [];
   const seen = new Set<string>();
   for (const hit of hits) {
+    // A hit spanning lines is prose or an injection attempt, never a command.
+    if (hit.raw.includes("\n") || hit.raw.includes("\r")) continue;
     const tokenized = tokenizeCommandLine(hit.raw);
     if (!tokenized) continue;
     if (options.mode !== "all" && !isPlausibleCommand(tokenized.command)) continue;
