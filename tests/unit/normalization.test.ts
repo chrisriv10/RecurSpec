@@ -1,5 +1,5 @@
-import { describe, expect, it } from "vitest";
-import { normalizeOutput, signatureFor } from "../../src/normalization/output.js";
+﻿import { describe, expect, it } from "vitest";
+import { normalizeOutput } from "../../src/normalization/output.js";
 import { LoopDetector } from "../../src/recovery/loop-detection.js";
 
 describe("normalizeOutput", () => {

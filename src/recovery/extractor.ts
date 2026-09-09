@@ -22,9 +22,9 @@ const INLINE_PATTERNS: Array<{ re: RegExp; pattern: string; confidence: number }
   { re: /\bexecute\s+`([^`]+)`/i, pattern: "execute-backticks", confidence: 0.9 },
   { re: /\btry\s+`([^`]+)`/i, pattern: "try-backticks", confidence: 0.9 },
   { re: /`([^`]+)`/, pattern: "inline-backticks", confidence: 0.8 },
-  { re: /\brun\s+(?:this\s+)?(?:command\s*)?[:\-]?\s*([a-zA-Z0-9_@.][^\n]{1,200})/i, pattern: "run-phrase", confidence: 0.7 },
-  { re: /\btry\s+(?:this\s+)?[:\-]?\s*([a-zA-Z0-9_@.][^\n]{1,200})/i, pattern: "try-phrase", confidence: 0.7 },
-  { re: /\bexecute\s+(?:this\s+)?[:\-]?\s*([a-zA-Z0-9_@.][^\n]{1,200})/i, pattern: "execute-phrase", confidence: 0.7 },
+  { re: /\brun\s+(?:this\s+)?(?:command\s*)?[:-]?\s*([a-zA-Z0-9_@.][^\n]{1,200})/i, pattern: "run-phrase", confidence: 0.7 },
+  { re: /\btry\s+(?:this\s+)?[:-]?\s*([a-zA-Z0-9_@.][^\n]{1,200})/i, pattern: "try-phrase", confidence: 0.7 },
+  { re: /\bexecute\s+(?:this\s+)?[:-]?\s*([a-zA-Z0-9_@.][^\n]{1,200})/i, pattern: "execute-phrase", confidence: 0.7 },
   { re: /to\s+fix\s+this,?\s+run\s+([^\n]{1,200})/i, pattern: "to-fix-run", confidence: 0.85 },
   { re: /to\s+continue,?\s+(?:run|execute)\s+([^\n]{1,200})/i, pattern: "to-continue-run", confidence: 0.85 },
   { re: /you\s+can\s+fix\s+this\s+with\s*:?\s*([^\n]{1,200})/i, pattern: "fix-with", confidence: 0.85 }

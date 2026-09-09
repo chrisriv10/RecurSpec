@@ -86,11 +86,9 @@ export async function runCase(
   let failureDetail: string | undefined;
   let blockedReason: string | undefined;
   let errorDetail: string | undefined;
-  let status: CaseStatus = "INTERNAL_ERROR";
   let hops = 0;
 
   const finish = async (finalStatus: CaseStatus): Promise<CaseResult> => {
-    status = finalStatus;
     const failed = finalStatus !== "PASS";
     const spec = kase.workspace ?? {};
     const preserve = spec.preserve ?? (failed ? (spec.preserveOnFailure ?? false) : false);
@@ -116,7 +114,7 @@ export async function runCase(
       name: kase.name,
       description: kase.description,
       tags: kase.tags,
-      status,
+      status: finalStatus,
       durationMs: Date.now() - started,
       hops: recoverySteps.length,
       originalCommand: displayCommand(kase.run.command, kase.run.args ?? []),
@@ -128,7 +126,7 @@ export async function runCase(
       recoverySteps: recoverySteps.map(mask),
       blockedReason,
       verification,
-      verifyOk: verification.length === 0 ? status === "PASS" : verification.every((v) => v.ok),
+      verifyOk: verification.length === 0 ? finalStatus === "PASS" : verification.every((v) => v.ok),
       trace: graph.trace(),
       warnings,
       workspace: workspacePath,

@@ -2,7 +2,7 @@
 // Demo fixture CLI for RecoverySpec.
 // Behaviour is driven by the ACME_SCENARIO env var plus state files under .acme/ in cwd.
 // Each scenario models one recovery-path shape (working, broken, ambiguous, unsafe, ...).
-import { readFileSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
+import { writeFileSync, mkdirSync, existsSync } from "node:fs";
 import path from "node:path";
 
 const scenario = process.env["ACME_SCENARIO"] ?? "default";
