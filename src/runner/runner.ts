@@ -14,6 +14,7 @@ import { normalizeOutput } from "../normalization/output.js";
 import { buildCaseEnv } from "./env.js";
 import { applyMutations, applyWorkspaceSpec, createWorkspace } from "./workspace.js";
 import { looksInteractive, runStep } from "./process.js";
+import { resolveExecutable } from "./resolve-exe.js";
 import { maskSecrets } from "../util/secrets.js";
 import { debugLog } from "../util/debug.js";
 import type { RecoveryCase, RecurSpecConfig, StepSpec } from "../types/config.js";
@@ -184,6 +185,15 @@ export async function runCase(
       await runStepsBestEffort(config.afterEach, base, warnings, "afterEach");
       return finish("INTERNAL_ERROR");
     }
+  }
+
+  if (!safety.shell && resolveExecutable(kase.run.command, caseEnv) === null) {
+    errorDetail =
+      "Could not execute the original command: " + JSON.stringify(kase.run.command) + " was not found on PATH. " +
+      "Install the tool under test or fix the case run.command.";
+    await runStepsBestEffort(kase.teardown, base, warnings, "teardown");
+    await runStepsBestEffort(config.afterEach, base, warnings, "afterEach");
+    return finish("INTERNAL_ERROR");
   }
 
   let initial: ExecutedCommand;

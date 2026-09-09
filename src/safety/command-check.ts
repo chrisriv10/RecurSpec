@@ -132,7 +132,7 @@ export function checkCommandSafety(command: string, args: string[], options: Saf
     if (!options.allowPipes && /(^|\s)\|(\s|$)/.test(fullText)) {
       return { ok: false, reason: "Pipes are blocked by default. Set safety.allowPipes: true to opt in." };
     }
-    if (!options.allowRedirection && /(^|\s)(>>?|<)(\s|$)/.test(fullText)) {
+    if (!options.allowRedirection && /(^|\s|\d)(>>?|<)(\s|$)/.test(fullText)) {
       return { ok: false, reason: "Shell redirection is blocked by default. Set safety.allowRedirection: true to opt in." };
     }
     for (const token of [exe, ...args]) {
