@@ -1,0 +1,57 @@
+﻿# RecurSpec CI self-test suite: every case in this file must PASS on all
+# platforms. It uses only `node` with workspace-local scripts (no shell,
+# no network, no external fixtures), so it also serves as the packaged-CLI
+# smoke contract. The deliberately broken showcase lives in recurspec.yml
+# at the repo root and is verified separately by scripts/ci-verify-showcase.mjs.
+
+version: 1
+
+defaults:
+  timeout: 30s
+
+cases:
+  - name: ci-output-recovery
+    description: Extract advice from tool output and recover
+    workspace:
+      write:
+        "fix.mjs": "import { writeFileSync } from \"node:fs\";\nwriteFileSync(\".fixed\", \"1\\n\");\nconsole.log(\"Fix applied.\");\n"
+        "main.mjs": "import { existsSync } from \"node:fs\";\nif (!existsSync(\".fixed\")) { console.error(\"Not ready. Run `node fix.mjs`.\"); process.exit(2); }\nconsole.log(\"ready\");\n"
+    run:
+      command: node
+      args: [main.mjs]
+    failure:
+      exitCode: 2
+      stderr:
+        contains: "Not ready"
+    recovery:
+      source: output
+    verify:
+      rerunOriginal: true
+      exitCode: 0
+      stdout:
+        contains: "ready"
+      files:
+        exists:
+          - .fixed
+
+  - name: ci-explicit-recovery
+    description: Follow an explicit recovery step and recover
+    workspace:
+      write:
+        "check.mjs": "import { existsSync, writeFileSync } from \"node:fs\";\nconst fix = process.argv[2] === \"--fix\";\nif (fix) { writeFileSync(\".fixed-explicit\", \"1\\n\"); console.log(\"fixed\"); }\nelse if (!existsSync(\".fixed-explicit\")) { console.error(\"Needs fixing.\"); process.exit(3); }\nelse { console.log(\"all good\"); }\n"
+    run:
+      command: node
+      args: [check.mjs]
+    failure:
+      exitCode: 3
+      stderr:
+        contains: "Needs fixing"
+    recovery:
+      steps:
+        - command: node
+          args: [check.mjs, --fix]
+    verify:
+      rerunOriginal: true
+      exitCode: 0
+      stdout:
+        contains: "all good"

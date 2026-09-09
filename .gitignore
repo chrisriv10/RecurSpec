@@ -7,4 +7,5 @@ coverage/
  recovered-workspaces/
 .tmp/
 *.tsbuildinfo
-
+junit.xml
+*.tgz
