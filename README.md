@@ -1,16 +1,20 @@
 <p align="center">
-  <img src="assets/logo.png" alt="RecurSpec logo" width="256" />
+  <img src="assets/logo.png" alt="RecurSpec logo" width="384" />
 </p>
 
-# RecurSpec
+<h1 align="center">RecurSpec</h1>
 
-**Test whether your error messages actually get users unstuck.**
+<p align="center">
+  <strong>Test whether your error messages actually get users unstuck.</strong>
+</p>
 
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
-[![Node.js](https://img.shields.io/badge/Node.js-22%2B-339933?style=flat-square&logo=nodedotjs&logoColor=white)](https://nodejs.org/)
-[![License](https://img.shields.io/badge/license-MIT-blue?style=flat-square)](LICENSE)
-[![Status](https://img.shields.io/badge/status-alpha-orange?style=flat-square)](#status)
-[![GitHub stars](https://img.shields.io/github/stars/chrisriv10/RecurSpec?style=flat-square&logo=github)](https://github.com/chrisriv10/RecurSpec)
+<p align="center">
+  <a href="https://www.typescriptlang.org/"><img src="https://img.shields.io/badge/TypeScript-5.x-3178C6?style=flat-square&logo=typescript&logoColor=white" alt="TypeScript" /></a>
+  <a href="https://nodejs.org/"><img src="https://img.shields.io/badge/Node.js-22%2B-339933?style=flat-square&logo=nodedotjs&logoColor=white" alt="Node.js" /></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue?style=flat-square" alt="License" /></a>
+  <a href="#status"><img src="https://img.shields.io/badge/status-alpha-orange?style=flat-square" alt="Status" /></a>
+  <a href="https://github.com/chrisriv10/RecurSpec"><img src="https://img.shields.io/github/stars/chrisriv10/RecurSpec?style=flat-square&logo=github" alt="GitHub stars" /></a>
+</p>
 
 RecurSpec tests the recovery paths in command-line tools.
 
