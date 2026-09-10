@@ -41,7 +41,7 @@ cases:
 | `run` | The original command: `command`, `args`, `cwd`, `env`, `stdin`, `timeout`. |
 | `failure` | Expected failure: `exitCode` (`0`, `2`, `nonzero`, `zero`) plus `stdout`/`stderr` `contains` / `notContains` / `matches` (string or list). |
 | `recovery` | `source: output | structured | explicit`, `steps`, `prefer`, `allowCommands`, `denyCommands`, `maxHops` (1-10, default 3), `format`, `extract.mode`. |
-| `verify` | `rerunOriginal` (default true), `exitCode`, `stdout`/`stderr`, `commands`, `files.exists` / `files.notExists`, `json` assertions. |
+| `verify` | `mode` (`retry` default, `goal`, `custom`), `rerunOriginal`, `exitCode`, `stdout`/`stderr`, `commands`, `files.exists` / `files.notExists`, `json` assertions. |
 | `safety` | Per-case override: `shell`, `network`, `allowedCommands`, `deniedCommands`, `allowPipes`, `allowRedirection`. |
 
 ## Durations
@@ -53,3 +53,14 @@ Accept `500ms`, `10s`, `2m`, `1h`, or a bare number (seconds).
 Only `PATH` (plus Windows system vars) passes through by default.
 Inherit more explicitly with `inheritEnv: [NODE_OPTIONS]`, set values with `env`,
 and list names in `secrets` to mask them in output.
+
+## Verification modes
+
+- `retry` (default): rerun the original command and verify it succeeds.
+- `goal`: do not rerun; verify the intended end state instead. Requires at least
+  one assertion (`files`, `stdout`, `stderr`, `json`, or `commands`).
+- `custom`: maintainer-defined proof without a rerun; same assertion requirement.
+
+Legacy configs without `mode` keep working: `rerunOriginal: false` behaves as
+`custom`, everything else as `retry`. Contradictory combinations (e.g. `mode: goal`
+with `rerunOriginal: true`) are rejected by `recurspec validate`.

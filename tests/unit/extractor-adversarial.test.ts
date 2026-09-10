@@ -99,4 +99,18 @@ describe("adversarial extraction", () => {
     expect(found).toHaveLength(1);
     expect(found[0]?.raw).toBe("foo init");
   });
+  it("ignores bare English words after run/try", () => {
+    expect(extractFromStreams("", "A complete log can be found in: out.log\\nTo see details, run:").length).toBe(0);
+    expect(commands("Run can be installed from https://example.com")).toHaveLength(0);
+  });
+
+  it("skips path mentions in bare backticks but keeps verb-led paths", () => {
+    expect(commands("error: destination `C:\\proj` already exists")).toHaveLength(0);
+    expect(commands("Run `C:\\tools\\foo.exe init`.")).toContain("C:\\tools\\foo.exe init");
+  });
+
+  it("supports Use-led backtick advice", () => {
+    const found = extractFromStreams("", "Use `cargo init` to initialize the directory.");
+    expect(found[0]).toMatchObject({ command: "cargo", args: ["init"], pattern: "use-backticks" });
+  });
 });

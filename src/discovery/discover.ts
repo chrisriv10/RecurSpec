@@ -62,5 +62,10 @@ export function candidatesToYaml(candidates: DiscoveredCandidate[], command: str
     recovery: { source: "output", extract: { mode: "command" } },
     verify: { rerunOriginal: true, exitCode: 0 }
   }));
-  return stringifyYaml({ version: 1, cases });
+  // Do not infer retry vs goal here; that distinction needs a maintainer.
+  return (
+    "# Draft recovery contracts. Check whether each recovery should use\n" +
+    "# mode: retry (rerun the original) or mode: goal (verify end state).\n" +
+    stringifyYaml({ version: 1, cases })
+  );
 }

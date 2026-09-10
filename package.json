@@ -13,9 +13,10 @@
     "url": "https://github.com/chrisriv10/RecurSpec/issues"
   },
   "keywords": [
-    "testing",
     "cli",
-    "error-recovery",
+    "testing",
+    "error-handling",
+    "recovery",
     "developer-tools",
     "ci"
   ],
@@ -37,7 +38,9 @@
   "files": [
     "dist",
     "README.md",
-    "LICENSE"
+    "LICENSE",
+    "CHANGELOG.md",
+    "assets/logo.png"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
@@ -48,6 +51,8 @@
     "demo": "node ./scripts/demo.mjs",
     "smoke": "node ./scripts/smoke-pack.mjs",
     "ci:showcase": "node ./scripts/ci-verify-showcase.mjs",
+    "test:real-world": "node ./scripts/test-real-world.mjs",
+    "demo:real-world": "node ./scripts/demo-real-world.mjs",
     "prepublishOnly": "pnpm build"
   },
   "dependencies": {

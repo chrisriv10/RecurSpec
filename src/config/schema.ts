@@ -46,6 +46,7 @@ const jsonAssertionSchema = z.object({
 });
 
 const verifySchema = z.object({
+  mode: z.enum(["retry", "goal", "custom"]).optional(),
   rerunOriginal: z.boolean().optional(),
   exitCode: z.union([z.number().int(), z.literal("nonzero"), z.literal("zero")]).optional(),
   stdout: streamAssertionSchema.optional(),
@@ -58,6 +59,51 @@ const verifySchema = z.object({
     })
     .optional(),
   json: z.union([jsonAssertionSchema, z.array(jsonAssertionSchema)]).optional()
+}).superRefine((verify, ctx) => {
+  const mode = verify.mode;
+  // Legacy configs without an explicit mode keep their historical meaning and
+  // are not subject to the rules below.
+  if (mode === undefined) return;
+  const fail = (path: Array<string>, message: string): void => {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path, message });
+  };
+  const hasPostconditions =
+    (verify.commands?.length ?? 0) > 0 ||
+    verify.stdout !== undefined ||
+    verify.stderr !== undefined ||
+    (verify.files?.exists?.length ?? 0) > 0 ||
+    (verify.files?.notExists?.length ?? 0) > 0 ||
+    (Array.isArray(verify.json) ? verify.json.length > 0 : verify.json !== undefined);
+  if ((mode === "goal" || mode === "custom") && verify.rerunOriginal === true) {
+    fail(
+      ["rerunOriginal"],
+      "verify.mode is \"" + mode + "\", but rerunOriginal is true.\n" +
+        "Goal recovery verifies the resulting state without retrying the original command. " +
+        "Remove rerunOriginal or use mode: \"retry\"."
+    );
+  }
+  if (mode === "retry" && verify.rerunOriginal === false) {
+    fail(
+      ["rerunOriginal"],
+      "verify.mode is \"retry\", but rerunOriginal is false.\n" +
+        "Retry recovery reruns the original command. Remove the flag or use a state-based mode."
+    );
+  }
+  if ((mode === "goal" || mode === "custom") && verify.exitCode !== undefined) {
+    fail(
+      ["exitCode"],
+      "verify.exitCode only applies when the original command is retried. " +
+        "Remove it or use mode: \"retry\"."
+    );
+  }
+  if ((mode === "goal" || mode === "custom") && !hasPostconditions) {
+    fail(
+      ["mode"],
+      "verify.mode \"" + mode + "\" requires at least one goal assertion " +
+        "(files, stdout, stderr, json, or commands). " +
+        "Recovery-command success alone is not evidence of recovery."
+    );
+  }
 });
 
 const workspaceSchema = z.object({

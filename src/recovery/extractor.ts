@@ -20,8 +20,12 @@ const LEAD_PATTERNS: Array<{ re: RegExp; pattern: string; confidence: number }> 
 const INLINE_PATTERNS: Array<{ re: RegExp; pattern: string; confidence: number }> = [
   { re: /\brun\s+`([^`]+)`/i, pattern: "run-backticks", confidence: 0.95 },
   { re: /\bexecute\s+`([^`]+)`/i, pattern: "execute-backticks", confidence: 0.9 },
+  { re: /\buse\s+`([^`]+)`/i, pattern: "use-backticks", confidence: 0.9 },
   { re: /\btry\s+`([^`]+)`/i, pattern: "try-backticks", confidence: 0.9 },
   { re: /`([^`]+)`/, pattern: "inline-backticks", confidence: 0.8 },
+  { re: /\brun\s+'([^']+)'/i, pattern: "run-single-quotes", confidence: 0.9 },
+  { re: /\btry\s+'([^']+)'/i, pattern: "try-single-quotes", confidence: 0.85 },
+  { re: /\bexecute\s+'([^']+)'/i, pattern: "execute-single-quotes", confidence: 0.85 },
   { re: /\brun\s+(?:this\s+)?(?:command\s*)?[:-]?\s*([a-zA-Z0-9_@.][^\n]{1,200})/i, pattern: "run-phrase", confidence: 0.7 },
   { re: /\btry\s+(?:this\s+)?[:-]?\s*([a-zA-Z0-9_@.][^\n]{1,200})/i, pattern: "try-phrase", confidence: 0.7 },
   { re: /\bexecute\s+(?:this\s+)?[:-]?\s*([a-zA-Z0-9_@.][^\n]{1,200})/i, pattern: "execute-phrase", confidence: 0.7 },
@@ -47,7 +51,21 @@ function stripWrapping(text: string): string {
   }
 }
 
+function harvestHintLine(line: string, lineNumber: number, hits: RawHit[]): void {
+  // A hint: line only counts when the remainder is an indented command line.
+  // Flowing prose ("hint: preference for all repositories...") is not advice.
+  const m = /^\s*hint\s*:(\s+)(.+)$/i.exec(line);
+  if (!m) return;
+  const gap = m[1] ?? "";
+  if (!(gap.length >= 2 || gap.includes("\t"))) return;
+  const candidate = stripWrapping(m[2] ?? "");
+  if (candidate.length === 0 || candidate.length > 300) return;
+  if (candidate.split(/\s+/).length < 2) return;
+  hits.push({ raw: candidate, pattern: "hint-colon", confidence: 0.75, line: lineNumber });
+}
+
 function harvestFromLine(line: string, lineNumber: number, hits: RawHit[]): void {
+  harvestHintLine(line, lineNumber, hits);
   for (const lead of LEAD_PATTERNS) {
     const m = lead.re.exec(line);
     if (m && m[1]) {
@@ -104,6 +122,7 @@ export function stripAnsi(text: string): string {
 
 const CONT_LEADS: Array<{ re: RegExp; pattern: string; confidence: number }> = [
   { re: /^\s*run\s*:\s*$/i, pattern: "run-colon-continuation", confidence: 0.85 },
+  { re: /^\s*run\s*$/i, pattern: "run-continuation", confidence: 0.8 },
   { re: /^\s*try\s*:\s*$/i, pattern: "try-colon-continuation", confidence: 0.85 },
   { re: /^\s*execute\s*:\s*$/i, pattern: "execute-colon-continuation", confidence: 0.85 },
   { re: /to\s+continue,?\s+(?:run|execute)\s*:\s*$/i, pattern: "to-continue-run-continuation", confidence: 0.85 },
@@ -115,13 +134,20 @@ function harvestContinuations(lines: string[], hits: RawHit[]): void {
     const line = lines[i] as string;
     const lead = CONT_LEADS.find((c) => c.re.test(line));
     if (!lead) continue;
-    for (let j = i + 1; j < Math.min(i + 4, lines.length); j++) {
+    // Collect consecutive command lines after a bare label, as in git
+    // multi-line advice. Stops at the first blank line past the start.
+    let collected = 0;
+    let started = false;
+    for (let j = i + 1; j < Math.min(i + 7, lines.length) && collected < 3; j++) {
       const next = (lines[j] as string).trim();
-      if (next.length === 0) continue;
-      if (next.length <= 300) {
-        hits.push({ raw: next, pattern: lead.pattern, confidence: lead.confidence, line: j + 1 });
+      if (next.length === 0) {
+        if (started) break;
+        continue;
       }
-      break;
+      started = true;
+      if (next.length > 300) break;
+      hits.push({ raw: next, pattern: lead.pattern, confidence: lead.confidence, line: j + 1 });
+      collected += 1;
     }
   }
 }
@@ -141,6 +167,10 @@ function collectForStream(text: string, source: "stderr" | "stdout", options: Ex
     const tokenized = tokenizeCommandLine(hit.raw);
     if (!tokenized) continue;
     if (options.mode !== "all" && !isPlausibleCommand(tokenized.command)) continue;
+    // A bare backtick span whose "command" is a filesystem path ("destination
+    // `C:\proj`), not verb-led advice) is a path mention, not an instruction.
+    // Verb-led patterns (run/try/execute/fenced) may still carry paths.
+    if (hit.pattern === "inline-backticks" && /[/\\]/.test(tokenized.command)) continue;
     const key = tokenized.command + "::" + tokenized.args.join(" ");
     if (seen.has(key)) continue;
     seen.add(key);
@@ -185,7 +215,8 @@ export function extractCandidates(
 
 function isPlausibleCommand(command: string): boolean {
   if (command.length > 64) return false;
-  if (/^(and|or|the|then|with|from|this|that|your|you|run|try|use)$/i.test(command)) return false;
+  // A bare English word (modal, auxiliary, preposition, ...) after "run" is
+  // prose ("run can be found in: ..."), never an executable name.
+  if (/^(and|or|the|then|with|from|this|that|your|you|run|try|use|be|is|are|was|were|been|being|has|have|had|do|does|did|can|could|should|would|may|might|must|shall|will|to|in|on|at|by|for|of|a|an|if|when|where|how|why|what|which|who|not|no|it|as|so)$/i.test(command)) return false;
   return /^[A-Za-z0-9_@.][A-Za-z0-9_@.:/\\-]*$/.test(command);
 }
-

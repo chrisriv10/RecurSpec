@@ -1,0 +1,29 @@
+# Real-world npm example. Tested against npm 11.17.0; assertions use stable
+# substrings only. The npm cache and update notifier are redirected into the
+# workspace so nothing is written outside it. See notes.md.
+version: 1
+
+defaults:
+  timeout: 60s
+
+cases:
+  - name: npm-missing-script
+    description: Informational suggestions are correctly not treated as recovery
+    env:
+      npm_config_cache: ./.npm-cache
+      npm_config_update_notifier: "false"
+    workspace:
+      write:
+        "package.json": "{\"name\": \"demo\", \"version\": \"1.0.0\", \"scripts\": {}}"
+    run:
+      command: npm
+      args: [run, missing]
+    failure:
+      exitCode: nonzero
+      stderr:
+        contains: "Missing script"
+    recovery:
+      source: output
+    verify:
+      rerunOriginal: true
+      exitCode: 0

@@ -12,14 +12,13 @@
   <a href="https://www.typescriptlang.org/"><img src="https://img.shields.io/badge/TypeScript-5.x-3178C6?style=flat-square&logo=typescript&logoColor=white" alt="TypeScript" /></a>
   <a href="https://nodejs.org/"><img src="https://img.shields.io/badge/Node.js-22%2B-339933?style=flat-square&logo=nodedotjs&logoColor=white" alt="Node.js" /></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue?style=flat-square" alt="License" /></a>
-  <a href="#status"><img src="https://img.shields.io/badge/status-alpha-orange?style=flat-square" alt="Status" /></a>
   <a href="https://github.com/chrisriv10/RecurSpec"><img src="https://img.shields.io/github/stars/chrisriv10/RecurSpec?style=flat-square&logo=github" alt="GitHub stars" /></a>
   <a href="https://github.com/chrisriv10/RecurSpec/actions/workflows/ci.yml"><img src="https://github.com/chrisriv10/RecurSpec/actions/workflows/ci.yml/badge.svg" alt="CI" /></a>
 </p>
 
 RecurSpec tests the recovery paths in command-line tools.
 
-It triggers a known failure, follows the recovery instructions printed by the tool, retries the original command, and checks whether the problem was actually fixed.
+It triggers a known failure, follows the recovery instructions printed by the tool, then retries the original command (or verifies the intended end state) and checks whether the problem was actually fixed.
 
 ```text
 $ acme deploy
@@ -59,26 +58,29 @@ recurspec validate
 recurspec test
 ```
 
-`init` writes a starter `recurspec.yml` containing a case like this:
+`init` writes a starter `recurspec.yml` with a runnable Node.js example. Replace
+the `node` commands with your own CLI to test a real recovery contract:
 
 ```yaml
-version: 1
-
 cases:
   - name: missing-project-config
-    description: User runs deploy before initializing a project
     workspace:
-      copy: [fixtures/basic-project/**]
-      remove: [.acme]
+      write:
+        "deploy.mjs": |
+          import { existsSync } from "node:fs";
+          if (!existsSync(".initialized")) {
+            console.error("Project not initialized. Run `node init.mjs` to create it.");
+            process.exit(2);
+          }
+          console.log("Deployed successfully.");
     run:
-      command: acme
-      args: [deploy]
+      command: node
+      args: [deploy.mjs]
     failure:
-      exitCode: nonzero
       stderr:
         contains: "Project not initialized"
     recovery:
-      source: output        # use the tool own advice
+      source: output
     verify:
       rerunOriginal: true
       exitCode: 0
@@ -150,6 +152,34 @@ Median hops: 1
 Maximum hops: 2
 ```
 
+## Tested against real CLIs
+
+RecurSpec is exercised against Git, Cargo, and npm, not only its bundled demo.
+
+It correctly distinguishes:
+
+- working retry paths
+- goal-based recovery
+- ambiguous advice
+- non-actionable command mentions
+
+Notably, RecurSpec first classified `cargo init` as a dead end because it
+retried `cargo new`. That verdict exposed a limitation in RecurSpec's retry-based
+model, not a Cargo defect, and led to goal-aware verification: the recovery
+command itself can satisfy the intended outcome.
+
+| Tool | Scenario | Result |
+|------|----------|--------|
+| Git | missing identity | ambiguous: two commands, both required |
+| Git | unmerged branch delete | pass: goal verified (branch gone, no retry) |
+| Git | divergent pull | ambiguous: three exclusive options |
+| Cargo | `new` into existing dir | pass: goal verified (project initialized via `init`) |
+| npm | missing script | correctly ignored: informational only |
+
+Run them with `pnpm test:real-world` (tools that are not installed are skipped).
+
+See `docs/` for concepts, configuration, extraction, safety, reporters, and discovery.
+
 ## What it catches
 
 Error messages can be correct while their recovery instructions are not.
@@ -205,6 +235,21 @@ verify:
   rerunOriginal: true
   exitCode: 0
 ```
+
+Some advice completes the task a different way instead of unblocking a retry
+(for example `cargo init` after `cargo new` fails, or a force-delete that
+removes the resource). For those cases, verify the intended end state instead:
+
+```yaml
+verify:
+  mode: goal
+  files:
+    exists:
+      - Cargo.toml
+```
+
+Modes are `retry` (default), `goal`, and `custom` (maintainer-defined proof).
+Goal and custom contracts must each assert at least one piece of evidence.
 
 You can also verify output or filesystem state:
 
@@ -279,7 +324,7 @@ jobs:
           node-version: 22
       - run: corepack enable
       - run: pnpm install --frozen-lockfile
-      - run: pnpm recurspec test
+      - run: pnpm exec recurspec test
 ```
 
 RecurSpec exits with a non-zero status when a recovery contract fails
@@ -296,7 +341,7 @@ recurspec test --format markdown
 ## Commands
 
 ```bash
-recurspec test [--case NAME] [--tag TAG] [--format human|json|junit|markdown] [--verbose] [--fail-fast] [--seed N]
+recurspec test [--case NAME] [--tag TAG] [--format human|json|junit|markdown] [--verbose] [--fail-fast] [--seed N] [--dry-run]
 recurspec validate
 recurspec init [--force]
 recurspec explain <case>
@@ -305,8 +350,6 @@ recurspec discover [--write]
 
 Run `recurspec --help` for all options. Programmatic API:
 `import { runRecurSpec } from "recurspec"`.
-
-See `docs/` for concepts, configuration, extraction, safety, reporters, and discovery.
 
 ## Limitations
 
@@ -324,9 +367,8 @@ visualization, and a GitHub Action wrapper around the JSON reporter.
 
 ## Status
 
-RecurSpec is under active development.
-
-The configuration format may change before the first stable release.
+RecurSpec is early-stage software.
+The configuration and public API may evolve before v1.0.
 
 ## License
 

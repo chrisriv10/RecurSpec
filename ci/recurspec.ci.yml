@@ -1,4 +1,4 @@
-﻿# RecurSpec CI self-test suite: every case in this file must PASS on all
+# RecurSpec CI self-test suite: every case in this file must PASS on all
 # platforms. It uses only `node` with workspace-local scripts (no shell,
 # no network, no external fixtures), so it also serves as the packaged-CLI
 # smoke contract. The deliberately broken showcase lives in recurspec.yml

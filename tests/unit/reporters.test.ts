@@ -21,6 +21,8 @@ function stubCase(overrides: Partial<CaseResult> & { name: string; status: CaseR
     recoverySteps: [],
     blockedReason: undefined,
     verification: [],
+    completion: { mode: "retry", verified: true },
+    safetyEvaluations: [],
     verifyOk: true,
     trace: { nodes: [], edges: [], path: ["acme deploy"] },
     warnings: [],

@@ -27,3 +27,11 @@ describe("tokenizeCommandLine", () => {
     expect(tokenizeCommandLine("   ")).toBeNull();
   });
 });
+describe("shell comments", () => {
+  it("strips trailing comments at token boundaries", () => {
+    expect(splitShellWords("git config x false  # merge")).toEqual(["git", "config", "x", "false"]);
+  });
+  it("keeps hash characters inside tokens", () => {
+    expect(splitShellWords("npm install foo#bar")).toEqual(["npm", "install", "foo#bar"]);
+  });
+});

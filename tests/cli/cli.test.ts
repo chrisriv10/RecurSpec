@@ -162,7 +162,7 @@ describe("recurspec CLI", () => {
     try {
       const ok = await runCli(project, ["explain", "cli-pass"]);
       expect(ok.code).toBe(0);
-      expect(ok.stdout).toContain("Original command:");
+      expect(ok.stdout).toContain("Original command");
       const missing = await runCli(project, ["explain", "nope"]);
       expect(missing.code).toBe(2);
     } finally {

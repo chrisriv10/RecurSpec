@@ -16,6 +16,7 @@ import { readFileSync } from "node:fs";
 
 const execFileAsync = promisify(execFile);
 const root = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
+const tscBin = path.join(root, "node_modules", "typescript", "bin", "tsc");
 const isWin = process.platform === "win32";
 const PNPM = isWin ? "pnpm.cmd" : "pnpm";
 const NPM = isWin ? "npm.cmd" : "npm";
@@ -85,7 +86,7 @@ try {
   const names = listTarball(tgzPath);
   console.log("tarball entries (" + names.length + "):");
   for (const n of names.slice(0, 40)) console.log("  " + n);
-  const mustHave = ["package/package.json", "package/dist/cli.js", "package/dist/index.js", "package/dist/index.d.ts", "package/README.md", "package/LICENSE"];
+  const mustHave = ["package/package.json", "package/dist/cli.js", "package/dist/index.js", "package/dist/index.d.ts", "package/README.md", "package/LICENSE", "package/CHANGELOG.md", "package/assets/logo.png"];
   for (const m of mustHave) {
     if (!names.includes(m)) fail("tarball missing required entry: " + m, names.join("\n"));
   }
@@ -141,6 +142,25 @@ try {
       "console.log(\"api-ok passed=\" + result.summary.passed);\n",
     "utf8"
   );
+  await writeFile(
+    path.join(projectDir, "api-check-types.ts"),
+    "import { runRecurSpec, selectCases, resolveCompletionMode } from \"recurspec\";\n" +
+      "import type { RunResult, CaseResult, RecurSpecConfig, VerifySpec, SafetyEvaluation } from \"recurspec\";\n" +
+      "const mode = resolveCompletionMode({ mode: \"goal\", files: { exists: [\"a\"] } });\n" +
+      "export async function check(cwd: string): Promise<RunResult> {\n" +
+      "  const sel = await selectCases(cwd, {});\n" +
+      "  void sel;\n" +
+      "  const r: RunResult = await runRecurSpec({ cwd });\n" +
+      "  const c: CaseResult | undefined = r.cases[0];\n" +
+      "  void c;\n" +
+      "  return r;\n" +
+      "}\n" +
+      "void mode;\n",
+    "utf8"
+  );
+  r = await run(process.execPath, [tscBin, "--noEmit", "--strict", "--skipLibCheck", "--module", "nodenext", "--target", "es2022", "--moduleResolution", "nodenext", "api-check-types.ts"], { cwd: projectDir });
+  if (r.code !== 0) fail("public type declarations do not typecheck", r.stdout + r.stderr);
+  console.log("api types ok");
   r = await run(process.execPath, ["api-check.mjs"], { cwd: projectDir });
   if (r.code !== 0 || !r.stdout.includes("api-ok")) fail("public API check failed", r.stdout + r.stderr);
   console.log(r.stdout.trim());

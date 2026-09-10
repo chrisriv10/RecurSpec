@@ -38,3 +38,41 @@ A case never collapses to a bare boolean internally. The possible states are:
 The summary recovery rate is computed over cases that reached a valid failure state only.
 Cases that never failed as expected are reported separately as invalid failure states,
 so a suite cannot inflate its score with contracts that never exercised recovery.
+
+## Recovery does not always mean retry
+
+Some tools give substitutive advice: the suggested command completes the task
+through a different operation instead of making the original command retryable.
+RecurSpec verifies whichever outcome the contract defines:
+
+Retry (the default): the blocker is removed, so the original runs again.
+
+```text
+deploy
+-> login required
+-> login
+-> deploy
+-> success
+```
+
+Goal: the recovery itself finishes the job; the original is not rerun.
+
+```text
+cargo new demo
+-> directory exists
+-> cargo init
+-> project initialized
+```
+
+```yaml
+verify:
+  mode: goal  # or retry (default), or custom
+
+  files:
+    exists:
+      - Cargo.toml
+```
+
+Goal mode requires at least one assertion (files, output, json, or a
+verification command): a recovery command exiting zero is never enough
+on its own. See `configuration.md` for the full `verify` reference.

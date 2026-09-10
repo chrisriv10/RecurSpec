@@ -1,7 +1,5 @@
 import { parseDuration } from "../config/duration.js";
 import { checkExitCode, checkStream } from "../assertions/output.js";
-import { checkFiles } from "../assertions/files.js";
-import { checkJsonAssertions } from "../assertions/json.js";
 import { deriveRecoveryPlan } from "../recovery/engine.js";
 import { extractFromStreams } from "../recovery/extractor.js";
 import { rankCandidates, selectCandidate } from "../recovery/ranking.js";
@@ -15,6 +13,7 @@ import { buildCaseEnv } from "./env.js";
 import { applyMutations, applyWorkspaceSpec, createWorkspace } from "./workspace.js";
 import { looksInteractive, runStep } from "./process.js";
 import { resolveExecutable } from "./resolve-exe.js";
+import { displayCommand, resolveCompletionMode, verifyCompletion, type VerifyOutcome } from "../verify/verifier.js";
 import { maskSecrets } from "../util/secrets.js";
 import { debugLog } from "../util/debug.js";
 import type { RecoveryCase, RecurSpecConfig, StepSpec } from "../types/config.js";
@@ -23,6 +22,7 @@ import type {
   CaseStatus,
   ExecutedCommand,
   ExtractedAdvice,
+  SafetyEvaluation,
   VerificationDetail
 } from "../types/result.js";
 
@@ -34,10 +34,6 @@ export interface SuiteContext {
 
 function slug(name: string): string {
   return "recurspec-" + name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 40) + "-";
-}
-
-function displayCommand(command: string, args: string[]): string {
-  return ([command, ...args].join(" ").trim() || command);
 }
 
 function clampHops(value: number | undefined): number {
@@ -76,10 +72,12 @@ export async function runCase(
   const safety = effectiveSafety(config, kase);
   const netWarning = networkWarning(safety.network);
   if (netWarning) warnings.push(netWarning);
+  const mode = resolveCompletionMode(kase.verify);
 
   const workspace = await createWorkspace(slug(kase.name));
   const recoverySteps: ExecutedCommand[] = [];
-  const verification: VerificationDetail[] = [];
+  const safetyEvaluations: SafetyEvaluation[] = [];
+  let verification: VerificationDetail[] = [];
   let initialFailure: ExecutedCommand | null = null;
   let extractedAdvice: ExtractedAdvice[] = [];
   let selectedAdvice: ExtractedAdvice | null = null;
@@ -126,8 +124,10 @@ export async function runCase(
       selectedAdvice,
       recoverySteps: recoverySteps.map(mask),
       blockedReason,
+      safetyEvaluations,
       verification,
       verifyOk: verification.length === 0 ? finalStatus === "PASS" : verification.every((v) => v.ok),
+      completion: { mode, verified: finalStatus === "PASS" },
       trace: graph.trace(),
       warnings,
       workspace: workspacePath,
@@ -255,12 +255,21 @@ export async function runCase(
   const executeRecoveryCommand = async (
     command: string,
     args: string[],
-    stdin?: string[]
+    stdin?: string[],
+    advice?: { source: "stderr" | "stdout"; line: number; pattern: string } | null
   ): Promise<{ result: ExecutedCommand; blocked?: string } | { result: null; blocked: string }> => {
     const check = checkCommandSafety(command, args, safetyOpts);
+    const evaluation: SafetyEvaluation = advice
+      ? { command, args, verdict: "allowed", reason: "", source: advice.source, line: advice.line, pattern: advice.pattern }
+      : { command, args, verdict: "allowed", reason: "" };
     if (!check.ok) {
-      return { result: null, blocked: check.reason ?? "Blocked by safety policy." };
+      evaluation.verdict = "blocked";
+      evaluation.reason = check.reason ?? "Blocked by safety policy.";
+      safetyEvaluations.push(evaluation);
+      return { result: null, blocked: evaluation.reason };
     }
+    evaluation.reason = "passes safety policy (shell: " + (safety.shell ? "enabled" : "disabled") + ")";
+    safetyEvaluations.push(evaluation);
     const step: StepSpec = stdin ? { command, args, stdin } : { command, args };
     let result: ExecutedCommand;
     try {
@@ -334,7 +343,7 @@ export async function runCase(
           extractedAdvice = ranked;
           selectedAdvice = selected.candidate;
           graph.addNode("advice", "suggested: " + displayCommand(selected.candidate.command, selected.candidate.args));
-          const follow = await executeRecoveryCommand(selected.candidate.command, selected.candidate.args);
+          const follow = await executeRecoveryCommand(selected.candidate.command, selected.candidate.args, undefined, selected.candidate);
           if (follow.result === null) {
             blockedReason = follow.blocked;
             await runStepsBestEffort(kase.teardown, base, warnings, "teardown");
@@ -368,7 +377,7 @@ export async function runCase(
     graph.addNode("advice", "suggested: " + displayCommand(plan.candidate.command, plan.candidate.args));
     let current: ExtractedAdvice | null = plan.candidate;
     while (current && recoverySteps.length < maxHops) {
-      const outcome = await executeRecoveryCommand(current.command, current.args);
+      const outcome = await executeRecoveryCommand(current.command, current.args, undefined, current);
       if (outcome.result === null) {
         blockedReason = outcome.blocked;
         await runStepsBestEffort(kase.teardown, base, warnings, "teardown");
@@ -440,71 +449,53 @@ export async function runCase(
   }
 
   const verify = kase.verify ?? { rerunOriginal: true, exitCode: 0 as const };
-  let rerun: ExecutedCommand | null = null;
-  if (verify.rerunOriginal !== false) {
-    try {
-      rerun = await runOne(kase.run);
-    } catch (err) {
-      errorDetail = "Verification rerun failed to execute: " + String((err as Error).message);
-      await runStepsBestEffort(kase.teardown, base, warnings, "teardown");
-      await runStepsBestEffort(config.afterEach, base, warnings, "afterEach");
-      return finish("INTERNAL_ERROR");
-    }
+  let verifyOutcome: VerifyOutcome;
+  try {
+    verifyOutcome = await verifyCompletion(verify, {
+      runOriginal: () => runOne(kase.run),
+      runStep: (step) => runOne(step),
+      workspaceDir: caseCwd
+    });
+  } catch (err) {
+    errorDetail = "Verification rerun failed to execute: " + String((err as Error).message);
+    await runStepsBestEffort(kase.teardown, base, warnings, "teardown");
+    await runStepsBestEffort(config.afterEach, base, warnings, "afterEach");
+    return finish("INTERNAL_ERROR");
+  }
+  verification = verifyOutcome.details;
+  const rerun = verifyOutcome.rerun;
+  if (mode === "retry" && rerun) {
     graph.addNode("verification", "retry " + displayCommand(rerun.command, rerun.args) + " -> exit " + String(rerun.exitCode));
-    if (rerun.timedOut) {
-      await runStepsBestEffort(kase.teardown, base, warnings, "teardown");
-      await runStepsBestEffort(config.afterEach, base, warnings, "afterEach");
-      return finish("TIMEOUT");
-    }
-    const exitCheck2 = checkExitCode(rerun.exitCode, verify.exitCode ?? 0);
-    const outCheck2 = checkStream("verify stdout", rerun.stdout, verify.stdout);
-    const errCheck2 = checkStream("verify stderr", rerun.stderr, verify.stderr);
-    for (const m of [...exitCheck2.messages, ...outCheck2.messages, ...errCheck2.messages]) {
-      verification.push({ ok: false, kind: "rerun", message: m });
-    }
-    if (verification.length === 0) {
-      verification.push({ ok: true, kind: "rerun", message: "Original command recovered successfully." });
-    }
+  } else if (mode === "goal") {
+    graph.addNode("verification", "verify goal");
+  } else {
+    graph.addNode("verification", "verify custom");
   }
-
-  for (const step of verify.commands ?? []) {
-    try {
-      const r = await runOne(step);
-      const ok = r.exitCode === 0;
-      verification.push({
-        ok,
-        kind: "command",
-        message: ok
-          ? "Postcondition command passed: " + displayCommand(step.command, step.args ?? [])
-          : "Postcondition command failed (" + displayCommand(step.command, step.args ?? []) + ") with exit " + String(r.exitCode)
-      });
-    } catch (err) {
-      verification.push({ ok: false, kind: "command", message: "Postcondition command threw: " + String((err as Error).message) });
-    }
-  }
-
-  for (const detail of await checkFiles(caseCwd, verify.files)) {
-    verification.push(detail);
-  }
-  for (const detail of await checkJsonAssertions(caseCwd, verify.json)) {
-    verification.push(detail);
+  if (rerun && rerun.timedOut) {
+    await runStepsBestEffort(kase.teardown, base, warnings, "teardown");
+    await runStepsBestEffort(config.afterEach, base, warnings, "afterEach");
+    return finish("TIMEOUT");
   }
 
   await runStepsBestEffort(kase.teardown, base, warnings, "teardown");
   await runStepsBestEffort(config.afterEach, base, warnings, "afterEach");
 
-  const rerunFailed = verification.some((v) => v.kind === "rerun" && !v.ok);
-  if (rerunFailed && rerun && initialFailure) {
-    const before = normalizeOutput(initialFailure.stdout + "\n" + initialFailure.stderr).trim();
-    const after = normalizeOutput(rerun.stdout + "\n" + rerun.stderr).trim();
-    if (before === after) {
-      return finish("RECOVERY_DEAD_END");
+  if (mode === "retry") {
+    const rerunFailed = verification.some((v) => v.kind === "rerun" && !v.ok);
+    if (rerunFailed && rerun && initialFailure) {
+      const before = normalizeOutput(initialFailure.stdout + "\n" + initialFailure.stderr).trim();
+      const after = normalizeOutput(rerun.stdout + "\n" + rerun.stderr).trim();
+      if (before === after) {
+        return finish("RECOVERY_DEAD_END");
+      }
+      return finish("PARTIAL_RECOVERY");
     }
-    return finish("PARTIAL_RECOVERY");
+    const anyFailed = verification.some((v) => !v.ok);
+    if (anyFailed) return finish("VERIFY_FAILED");
+    void hops;
+    return finish("PASS");
   }
-  const anyFailed = verification.some((v) => !v.ok);
-  if (anyFailed) return finish("VERIFY_FAILED");
+  if (verification.some((v) => !v.ok)) return finish("VERIFY_FAILED");
   void hops;
   return finish("PASS");
 }
-

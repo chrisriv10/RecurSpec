@@ -20,7 +20,9 @@ function chainLine(c: CaseResult): string {
   for (const step of c.recoverySteps) {
     parts.push([step.command, ...step.args].join(" "));
   }
-  if (c.verifyOk && c.status === "PASS") parts.push(c.originalCommand);
+  // Only retry recovery reruns the original command; goal/custom verdicts
+  // must not invent a trailing retry edge.
+  if (c.verifyOk && c.status === "PASS" && c.completion.mode === "retry") parts.push(c.originalCommand);
   return "  " + parts.join(" â†’ ");
 }
 
@@ -34,7 +36,15 @@ export function renderTerminal(result: RunResult, options: { verbose?: boolean; 
     lines.push(statusLine(c, colors));
     lines.push(chainLine(c));
     if (c.status === "PASS") {
-      lines.push("  recovered in " + c.hops + (c.hops === 1 ? " hop" : " hops") + " Â· " + c.durationMs + "ms");
+      const hopWord = c.hops === 1 ? " hop" : " hops";
+      const timing = " in " + c.hops + hopWord + " · " + c.durationMs + "ms";
+      if (c.completion.mode === "goal") lines.push("  goal satisfied" + timing);
+      else if (c.completion.mode === "custom") lines.push("  verified" + timing);
+      else lines.push("  recovered" + timing);
+      if (options.verbose && c.safetyEvaluations.length > 0) {
+        lines.push("");
+        lines.push(...candidateLines(c));
+      }
     } else {
       const detail = humanDetail(c);
       if (detail) {
@@ -46,6 +56,7 @@ export function renderTerminal(result: RunResult, options: { verbose?: boolean; 
         lines.push("");
         lines.push("  Recovery path:");
         for (const label of c.trace.path) lines.push("    " + label);
+        if (c.safetyEvaluations.length > 0) lines.push(...candidateLines(c));
       }
     }
     lines.push("");
@@ -74,6 +85,33 @@ export function renderTerminal(result: RunResult, options: { verbose?: boolean; 
   return lines.join("\n");
 }
 
+function patternLabel(pattern: string): string {
+  if (pattern === "hint-colon") return "hint";
+  if (pattern === "structured-json") return "structured hint";
+  if (pattern === "fenced-code-block") return "code block";
+  if (pattern === "shell-prompt") return "shell prompt";
+  if (pattern === "prompt-gt") return "prompt";
+  if (pattern.endsWith("-backticks")) return "quoted command";
+  if (pattern.endsWith("-continuation")) return "follow-on line";
+  if (pattern.endsWith("-colon")) return "label";
+  if (pattern.endsWith("-phrase")) return "phrase";
+  if (pattern === "fix-with") return "advice phrase";
+  if (pattern === "to-fix-run" || pattern === "to-continue-run") return "advice phrase";
+  return pattern;
+}
+
+function candidateLines(c: CaseResult): string[] {
+  const lines: string[] = [];
+  lines.push("  Recovery candidates:");
+  c.safetyEvaluations.forEach((e, idx) => {
+    lines.push("    " + (idx + 1) + ". " + e.command + (e.args.length > 0 ? " " + e.args.join(" ") : ""));
+    const origin = e.source ? e.source + (e.line ? " line " + e.line : "") + (e.pattern ? " (" + patternLabel(e.pattern) + ")" : "") : "explicit step";
+    lines.push("       source: " + origin);
+    lines.push("       safety: " + e.verdict + " - " + e.reason);
+  });
+  return lines;
+}
+
 function humanDetail(c: CaseResult): string {
   switch (c.status) {
     case "NO_FAILURE":
@@ -83,8 +121,16 @@ function humanDetail(c: CaseResult): string {
     case "NO_RECOVERY_ADVICE":
       return "No executable recovery advice was found in the tool output.";
     case "AMBIGUOUS_RECOVERY": {
-      const list = c.extractedAdvice.map((a) => "    - " + a.command + " " + a.args.join(" ") + " (" + a.source + ":" + a.line + ", " + a.pattern + ")").join("\n");
-      return "Recovery advice was ambiguous, so nothing was executed:\n" + list;
+      const shown = c.extractedAdvice.slice(0, 5);
+      const items: string[] = [];
+      shown.forEach((a, idx) => {
+        const cmd = a.command + (a.args.length > 0 ? " " + a.args.join(" ") : "");
+        items.push((idx + 1) + ". " + cmd);
+        items.push("   confidence: " + a.confidence.toFixed(2) + ", source: " + a.source + " line " + a.line + " (" + patternLabel(a.pattern) + ")");
+      });
+      const n = c.extractedAdvice.length;
+      const head = n === 1 ? "1 plausible recovery instruction:" : n + " equally plausible recovery instructions:";
+      return head + "\n\n" + items.join("\n") + "\n\nRecurSpec will not guess between equally ranked recovery paths.";
     }
     case "BLOCKED_RECOVERY":
       return "BLOCKED RECOVERY COMMAND\n" + (c.blockedReason ?? "Blocked by safety policy.");
@@ -94,7 +140,7 @@ function humanDetail(c: CaseResult): string {
       return "Recovery made progress, but the original task still fails with a new error.";
     case "RECOVERY_DEAD_END": {
       const before = c.initialFailure ? snippet(c.initialFailure.stderr || c.initialFailure.stdout) : "";
-      return "Recovery command succeeded, but the original task still fails.\n\n  Initial error:\n" + indent(before) + "\n\n  Status: RECOVERY_DEAD_END";
+      return "Recovery command succeeded, but the original task still fails.\n\n  Initial error:\n" + indent(before);
     }
     case "RECOVERY_LOOP":
       return "RECOVERY LOOP DETECTED\nThe same recovery step repeated. Stopped instead of looping forever.";

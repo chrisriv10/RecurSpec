@@ -61,7 +61,10 @@ export interface JsonAssertion {
   assertions: Record<string, unknown>;
 }
 
+export type RecoveryCompletion = "retry" | "goal" | "custom";
+
 export interface VerifySpec {
+  mode?: RecoveryCompletion;
   rerunOriginal?: boolean;
   exitCode?: number | "nonzero" | "zero";
   stdout?: StreamAssertion;

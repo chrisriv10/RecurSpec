@@ -1,0 +1,8 @@
+{
+  "tool": "cargo",
+  "requiredBinaries": ["cargo"],
+  "config": "recurspec.yml",
+  "expected": {
+    "cargo-new-existing": "PASS"
+  }
+}

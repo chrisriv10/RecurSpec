@@ -1,0 +1,192 @@
+# Real-world git examples. Tested against git 2.50.1; assertions use stable
+# substrings only. Cases needing `--global` config redirect HOME into the
+# isolated workspace (workspace.mkdir creates it first), so the real user
+# configuration is never touched. See notes.md.
+version: 1
+
+defaults:
+  timeout: 60s
+
+cases:
+  - name: git-missing-identity
+    description: Commit without any author identity configured
+    env:
+      HOME: ./home
+      GIT_CONFIG_NOSYSTEM: "1"
+    workspace:
+      mkdir: [home]
+      write:
+        "a.txt": "x\n"
+    setup:
+      - command: git
+        args: [init]
+      - command: git
+        args: [add, a.txt]
+    run:
+      command: git
+      args: [commit, -m, test]
+    failure:
+      exitCode: nonzero
+      stderr:
+        contains: "Author identity unknown"
+    recovery:
+      source: output
+    verify:
+      rerunOriginal: true
+      exitCode: 0
+
+  - name: git-missing-identity-explicit
+    description: Same failure, documented two-step recovery with redirected HOME
+    env:
+      HOME: ./home
+      GIT_CONFIG_NOSYSTEM: "1"
+    workspace:
+      mkdir: [home]
+      write:
+        "a.txt": "x\n"
+    setup:
+      - command: git
+        args: [init]
+      - command: git
+        args: [add, a.txt]
+    run:
+      command: git
+      args: [commit, -m, test]
+    failure:
+      exitCode: nonzero
+      stderr:
+        contains: "Author identity unknown"
+    recovery:
+      steps:
+        - command: git
+          args: [config, --global, user.email, test@example.com]
+        - command: git
+          args: [config, --global, user.name, Test]
+    verify:
+      rerunOriginal: true
+      exitCode: 0
+
+  - name: git-unmerged-branch
+    description: Deleting an unmerged branch is verified by absence, not retry
+    env:
+      GIT_CONFIG_NOSYSTEM: "1"
+      GIT_AUTHOR_NAME: Test
+      GIT_AUTHOR_EMAIL: test@example.com
+      GIT_COMMITTER_NAME: Test
+      GIT_COMMITTER_EMAIL: test@example.com
+    workspace:
+      write:
+        "a.txt": "x\n"
+        "b.txt": "y\n"
+        "check-gone.mjs": |
+          import { execFileSync } from "node:child_process";
+          const branch = process.argv[2];
+          const out = execFileSync("git", ["branch", "--list", branch], { encoding: "utf8" });
+          if (out.trim() !== "") { console.error("branch still exists: " + branch); process.exit(1); }
+          console.log("branch gone: " + branch);
+    setup:
+      - command: git
+        args: [init]
+      - command: git
+        args: [config, user.email, test@example.com]
+      - command: git
+        args: [config, user.name, Test]
+      - command: git
+        args: [add, a.txt]
+      - command: git
+        args: [commit, -m, base]
+      - command: git
+        args: [checkout, -b, side]
+      - command: git
+        args: [add, b.txt]
+      - command: git
+        args: [commit, -m, side]
+      - command: git
+        args: [checkout, "-"]
+    run:
+      command: git
+      args: [branch, -d, side]
+    failure:
+      exitCode: nonzero
+      stderr:
+        contains: "not fully merged"
+    recovery:
+      source: output
+    verify:
+      mode: goal
+      commands:
+        - command: node
+          args: [check-gone.mjs, side]
+
+  - name: git-divergent-pull
+    description: Three exclusive options means ambiguity, not a guess
+    env:
+      GIT_CONFIG_NOSYSTEM: "1"
+      GIT_AUTHOR_NAME: Test
+      GIT_AUTHOR_EMAIL: test@example.com
+      GIT_COMMITTER_NAME: Test
+      GIT_COMMITTER_EMAIL: test@example.com
+    setup:
+      - command: git
+        args: [init, --bare, origin.git]
+      - command: git
+        args: [clone, origin.git, w1]
+      - command: git
+        args: [clone, origin.git, w2]
+      - command: node
+        args: [-e, "require('fs').writeFileSync('w1/f.txt','1\\n')"]
+      - command: git
+        args: [-C, w1, add, f.txt]
+      - command: git
+        args: [-C, w1, commit, -m, one]
+      - command: git
+        args: [-C, w1, push, -u, origin, HEAD]
+      - command: node
+        args: [-e, "require('fs').writeFileSync('w2/g.txt','2\\n')"]
+      - command: git
+        args: [-C, w2, add, g.txt]
+      - command: git
+        args: [-C, w2, commit, -m, two]
+    run:
+      command: git
+      args: [-C, w2, pull]
+    failure:
+      exitCode: nonzero
+      stderr:
+        contains: "divergent branches"
+    recovery:
+      source: output
+    verify:
+      rerunOriginal: true
+      exitCode: 0
+
+  - name: git-push-no-remote
+    description: Placeholder advice is not executable recovery
+    env:
+      GIT_CONFIG_NOSYSTEM: "1"
+      GIT_AUTHOR_NAME: Test
+      GIT_AUTHOR_EMAIL: test@example.com
+      GIT_COMMITTER_NAME: Test
+      GIT_COMMITTER_EMAIL: test@example.com
+    workspace:
+      write:
+        "a.txt": "x\n"
+    setup:
+      - command: git
+        args: [init]
+      - command: git
+        args: [add, a.txt]
+      - command: git
+        args: [commit, -m, base]
+    run:
+      command: git
+      args: [push]
+    failure:
+      exitCode: nonzero
+      stderr:
+        contains: "No configured push destination"
+    recovery:
+      source: output
+    verify:
+      rerunOriginal: true
+      exitCode: 0

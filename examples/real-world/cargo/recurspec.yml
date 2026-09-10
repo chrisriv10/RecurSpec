@@ -1,0 +1,30 @@
+# Real-world cargo example. Tested against cargo 1.85.1; assertions use a
+# stable substring only. Everything happens inside the isolated workspace;
+# cargo never touches the network here. See notes.md.
+version: 1
+
+defaults:
+  timeout: 120s
+
+cases:
+  - name: cargo-new-existing
+    description: New into an existing directory suggests init, which initializes the project in place
+    workspace:
+      mkdir: [proj]
+    run:
+      command: cargo
+      args: [new, proj]
+    failure:
+      exitCode: nonzero
+      stderr:
+        contains: "already exists"
+    recovery:
+      source: output
+    verify:
+      mode: goal
+      files:
+        exists:
+          - Cargo.toml
+      commands:
+        - command: cargo
+          args: [metadata, --no-deps]

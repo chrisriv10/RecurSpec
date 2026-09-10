@@ -9,6 +9,10 @@ Honours `NO_COLOR=1`; `--verbose` adds the recovery trace.
 
 Exit codes: `0` all pass, `1` one or more failed, `2` config/usage error.
 
+Every case-level outcome (blocked or ambiguous recovery, loops, timeouts,
+verification failures, missing executables) reports as exit `1`; only
+configuration problems, unreadable files, and CLI misuse report as exit `2`.
+
 ## JSON (`--format json`)
 
 Stable, versioned (`{"version": 1, "summary": {}, "cases": []}`) machine output.

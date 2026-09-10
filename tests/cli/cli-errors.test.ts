@@ -1,4 +1,4 @@
-﻿import { execFile } from "node:child_process";
+import { execFile } from "node:child_process";
 import { cp, mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -176,4 +176,58 @@ describe("recurspec CLI error paths", () => {
       await rm(project, { recursive: true, force: true });
     }
   });
+
+describe("recurspec --dry-run", () => {
+  beforeAll(ensureBuilt, 240000);
+
+  it("prints the plan without executing anything", async () => {
+    const project = await makeProject(PASSING_CONFIG);
+    try {
+      const res = await runCli(project, ["test", "--dry-run"]);
+      expect(res.code).toBe(0);
+      expect(res.stdout).toContain("1. Create isolated workspace");
+      expect(res.stdout).toContain("2. Run: node demo/acme-cli/acme.mjs deploy");
+      expect(res.stdout).toContain("7. Retry original command");
+      expect(res.stdout).toContain("Dry run: nothing was executed.");
+    } finally {
+      await rm(project, { recursive: true, force: true });
+    }
+  });
+
+  it("never resolves or runs the target command", async () => {
+    const bad = PASSING_CONFIG.replace("      command: node", "      command: recurspec-definitely-not-a-real-binary");
+    const project = await makeProject(bad);
+    try {
+      const res = await runCli(project, ["test", "--dry-run"]);
+      expect(res.code).toBe(0);
+      expect(res.stdout).toContain("recurspec-definitely-not-a-real-binary");
+    } finally {
+      await rm(project, { recursive: true, force: true });
+    }
+  });
+
+  it("emits a versioned JSON plan", async () => {
+    const project = await makeProject(PASSING_CONFIG);
+    try {
+      const res = await runCli(project, ["test", "--dry-run", "--format", "json"]);
+      expect(res.code).toBe(0);
+      const parsed = JSON.parse(res.stdout) as { version: number; plans: Array<{ name: string; completion: { mode: string } }> };
+      expect(parsed.version).toBe(1);
+      expect(parsed.plans[0]?.name).toBe("cli-pass");
+      expect(parsed.plans[0]?.completion.mode).toBe("retry");
+    } finally {
+      await rm(project, { recursive: true, force: true });
+    }
+  });
+
+  it("rejects junit for dry runs", async () => {
+    const project = await makeProject(PASSING_CONFIG);
+    try {
+      const res = await runCli(project, ["test", "--dry-run", "--format", "junit"]);
+      expect(res.code).toBe(2);
+    } finally {
+      await rm(project, { recursive: true, force: true });
+    }
+  });
+});
 });

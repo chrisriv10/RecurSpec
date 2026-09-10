@@ -11,7 +11,10 @@ export function renderMarkdown(result: RunResult): string {
   lines.push("|---|---|---|");
   for (const c of result.cases) {
     const icon = c.status === "PASS" ? "✅" : "❌";
-    const chain = [c.originalCommand, ...c.recoverySteps.map((s) => displayShort(s.command, s.args))].join(" → ");
+    const parts = [c.originalCommand, ...c.recoverySteps.map((s) => displayShort(s.command, s.args))];
+    // Only retry recovery reruns the original command.
+    if (c.status === "PASS" && c.completion.mode === "retry") parts.push(c.originalCommand);
+    const chain = parts.join(" → ");
     const recovery = c.status === "PASS" ? "`" + chain + "`" : c.status + " after `" + chain + "`";
     lines.push("| " + icon + " | " + escCell(c.name) + " | " + escCell(recovery) + " |");
   }

@@ -1,3 +1,4 @@
+import type { RecoveryCompletion } from "./config.js";
 import type { RecoveryTrace } from "./recovery.js";
 
 export type CaseStatus =
@@ -37,6 +38,16 @@ export interface ExtractedAdvice {
   pattern: string;
 }
 
+export interface SafetyEvaluation {
+  command: string;
+  args: string[];
+  verdict: "allowed" | "blocked";
+  reason: string;
+  source?: "stderr" | "stdout";
+  line?: number;
+  pattern?: string;
+}
+
 export interface VerificationDetail {
   ok: boolean;
   kind: string;
@@ -58,8 +69,13 @@ export interface CaseResult {
   selectedAdvice: ExtractedAdvice | null;
   recoverySteps: ExecutedCommand[];
   blockedReason?: string;
+  safetyEvaluations: SafetyEvaluation[];
   verification: VerificationDetail[];
   verifyOk: boolean;
+  completion: {
+    mode: RecoveryCompletion;
+    verified: boolean;
+  };
   trace: RecoveryTrace;
   warnings: string[];
   workspace?: string;

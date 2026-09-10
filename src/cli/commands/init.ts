@@ -3,43 +3,57 @@ import { writeFile } from "node:fs/promises";
 import path from "node:path";
 
 const STARTER = `# RecurSpec starter configuration.
-# Edit the case below to match your own CLI, then run: recurspec test
+# This example runs as-is with only Node.js: it fails on purpose, follows
+# the printed advice, and verifies recovery. Replace the \`node\` commands
+# with your own CLI to test a real recovery contract.
+# Run: recurspec test
 # Docs: https://github.com/chrisriv10/RecurSpec
 
 version: 1
 
 defaults:
   timeout: 10s
-  env:
-    CI: "1"
-
-safety:
-  shell: false
-  network: warn
 
 cases:
   - name: missing-project-config
-    description: User runs deploy before initializing a project
+    description: Placeholder example. Replace node with the CLI you want to test.
+
+    # Each case runs in a fresh temporary directory. These files are created there.
     workspace:
-      copy:
-        - fixtures/basic-project/**
-      remove:
-        - .acme
+      write:
+        "deploy.mjs": |
+          import { existsSync } from "node:fs";
+          if (!existsSync(".initialized")) {
+            console.error("Project not initialized. Run \`node init.mjs\` to create it.");
+            process.exit(2);
+          }
+          console.log("Deployed successfully.");
+        "init.mjs": |
+          import { writeFileSync } from "node:fs";
+          writeFileSync(".initialized", "yes\\n");
+          console.log("Initialized.");
+
+    # 1. This command intentionally fails.
     run:
-      command: acme
-      args: [deploy]
+      command: node
+      args: [deploy.mjs]
+
+    # 2. RecurSpec checks the failure looks as expected.
     failure:
       exitCode: nonzero
       stderr:
         contains: "Project not initialized"
+
+    # 3. RecurSpec extracts the advice the tool itself printed...
     recovery:
       source: output
-      prefer: [stderr, stdout]
-      extract:
-        mode: command
+
+    # 4. ...runs it, retries the original command, and verifies recovery.
     verify:
       rerunOriginal: true
       exitCode: 0
+      stdout:
+        contains: "Deployed successfully"
 `;
 
 export async function initCommand(cwd: string, force: boolean): Promise<number> {
@@ -51,6 +65,6 @@ export async function initCommand(cwd: string, force: boolean): Promise<number> 
     return 2;
   }
   await writeFile(target, STARTER, "utf8");
-  process.stdout.write("Created " + target + ".\nEdit it, then run: recurspec test\n");
+  process.stdout.write("Created " + target + ".\nRun `recurspec test` to try the example, then edit it for your own CLI.\n");
   return 0;
 }

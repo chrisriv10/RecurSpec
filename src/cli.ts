@@ -23,12 +23,13 @@ program
   .option("--format <format>", "Output format: human, json, junit, markdown", "human")
   .option("--verbose", "Show recovery traces and extra detail")
   .option("--fail-fast", "Stop after the first failing case")
-  .option("--seed <seed>", "Seed for any randomized behavior")
+  .option("--seed <seed>", "Record a seed in the run summary")
   .option("--debug", "Print internal diagnostics to stderr")
+  .option("--dry-run", "Show the execution plan without running anything")
   .action(
     async (
       config: string | undefined,
-      options: { case: string[]; tag: string[]; format: string; verbose?: boolean; failFast?: boolean; seed?: string; debug?: boolean }
+      options: { case: string[]; tag: string[]; format: string; verbose?: boolean; failFast?: boolean; seed?: string; debug?: boolean; dryRun?: boolean }
     ) => {
       process.exitCode = await testCommand(process.cwd(), {
         config,
@@ -38,7 +39,8 @@ program
         verbose: options.verbose,
         failFast: options.failFast,
         seed: options.seed === undefined ? undefined : Number(options.seed),
-        debug: options.debug
+        debug: options.debug,
+        dryRun: options.dryRun
       });
     }
   );

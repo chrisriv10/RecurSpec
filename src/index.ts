@@ -4,8 +4,26 @@ import { buildRunResult } from "./reporting/summary.js";
 import type { RecurSpecConfig } from "./types/config.js";
 import type { CaseResult, RunResult } from "./types/result.js";
 
-export type { RecurSpecConfig, RecoveryCase } from "./types/config.js";
-export type { CaseResult, RunResult, RunSummary, CaseStatus, ExecutedCommand, ExtractedAdvice } from "./types/result.js";
+export type {
+  RecurSpecConfig,
+  RecoveryCase,
+  VerifySpec,
+  StepSpec,
+  FailureSpec,
+  SafetySpec,
+  RecoveryCompletion
+} from "./types/config.js";
+export { resolveCompletionMode } from "./verify/verifier.js";
+export type {
+  CaseResult,
+  RunResult,
+  RunSummary,
+  CaseStatus,
+  ExecutedCommand,
+  ExtractedAdvice,
+  SafetyEvaluation,
+  VerificationDetail
+} from "./types/result.js";
 export type { RecoveryNode, RecoveryEdge, RecoveryTrace } from "./types/recovery.js";
 
 export interface RunOptions {

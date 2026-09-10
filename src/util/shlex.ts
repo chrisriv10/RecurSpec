@@ -39,6 +39,11 @@ export function splitShellWords(input: string): string[] | null {
       hasToken = true;
       continue;
     }
+    if (!inSingle && !inDouble && ch === "#" && current === "") {
+      // Shell-style trailing comment: "#" starts a comment only at a token
+      // boundary, so URL fragments like foo#bar survive intact.
+      break;
+    }
     if (!inSingle && !inDouble && (ch === " " || ch === "\t" || ch === "\n" || ch === "\r")) {
       if (hasToken) {
         tokens.push(current);

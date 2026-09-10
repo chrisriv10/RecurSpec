@@ -1,0 +1,12 @@
+{
+  "tool": "git",
+  "requiredBinaries": ["git"],
+  "config": "recurspec.yml",
+  "expected": {
+    "git-missing-identity": "AMBIGUOUS_RECOVERY",
+    "git-missing-identity-explicit": "PASS",
+    "git-unmerged-branch": "PASS",
+    "git-divergent-pull": "AMBIGUOUS_RECOVERY",
+    "git-push-no-remote": "NO_RECOVERY_ADVICE"
+  }
+}
