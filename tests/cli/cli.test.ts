@@ -22,12 +22,18 @@ interface CliRun {
   stderr: string;
 }
 
-async function runCli(cwd: string, args: string[]): Promise<CliRun> {
+async function runCli(cwd: string, args: string[], retries = 1): Promise<CliRun> {
   try {
     const res = await execFileAsync(process.execPath, [cliJs, ...args], { cwd, timeout: 120000 });
     return { code: 0, stdout: res.stdout, stderr: res.stderr };
   } catch (err) {
     const e = err as { code?: number; stdout?: string; stderr?: string };
+    // A codeless spawn failure (e.g. transient EMFILE under parallel load)
+    // is environmental, not a product result: retry once before giving up.
+    if (typeof e.code !== "number" && retries > 0) {
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      return runCli(cwd, args, retries - 1);
+    }
     return { code: e.code ?? 1, stdout: e.stdout ?? "", stderr: e.stderr ?? "" };
   }
 }
