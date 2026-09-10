@@ -14,6 +14,7 @@
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue?style=flat-square" alt="License" /></a>
   <a href="#status"><img src="https://img.shields.io/badge/status-alpha-orange?style=flat-square" alt="Status" /></a>
   <a href="https://github.com/chrisriv10/RecurSpec"><img src="https://img.shields.io/github/stars/chrisriv10/RecurSpec?style=flat-square&logo=github" alt="GitHub stars" /></a>
+  <a href="https://github.com/chrisriv10/RecurSpec/actions/workflows/ci.yml"><img src="https://github.com/chrisriv10/RecurSpec/actions/workflows/ci.yml/badge.svg" alt="CI" /></a>
 </p>
 
 RecurSpec tests the recovery paths in command-line tools.
@@ -58,7 +59,7 @@ recurspec validate
 recurspec test
 ```
 
-`init` writes a starter `recurspec.yml` with one example contract:
+`init` writes a starter `recurspec.yml` containing a case like this:
 
 ```yaml
 version: 1
