@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/logo.png" alt="RecurSpec logo" width="384" />
+  <img src="assets/logo.png" alt="RecurSpec logo" width="320" />
 </p>
 
 <h1 align="center">RecurSpec</h1>
