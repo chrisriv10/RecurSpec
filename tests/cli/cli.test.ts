@@ -3,18 +3,16 @@ import { mkdtemp, readFile, rm, writeFile, cp, mkdir } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
-import { beforeAll, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import { repoRoot } from "../helpers/acme.js";
 
 const execFileAsync = promisify(execFile);
 const cliJs = path.join(repoRoot, "dist", "cli.js");
 
-async function ensureBuilt(): Promise<void> {
-  await execFileAsync(process.execPath, [path.join(repoRoot, "node_modules", "typescript", "bin", "tsc"), "-p", "tsconfig.build.json"], {
-    cwd: repoRoot,
-    timeout: 240000
-  });
-}
+// Note: dist is built once in tests/global-setup.ts before workers start.
+// Test files must never rebuild/overwrite dist themselves: concurrent tsc
+// writes while other workers spawn `node dist/cli.js` race on Windows file
+// locking and produce flaky empty-stdout spawn failures.
 
 interface CliRun {
   code: number;
@@ -27,12 +25,25 @@ async function runCli(cwd: string, args: string[], retries = 1): Promise<CliRun>
     const res = await execFileAsync(process.execPath, [cliJs, ...args], { cwd, timeout: 120000 });
     return { code: 0, stdout: res.stdout, stderr: res.stderr };
   } catch (err) {
-    const e = err as { code?: number; stdout?: string; stderr?: string };
-    // A codeless spawn failure (e.g. transient EMFILE under parallel load)
-    // is environmental, not a product result: retry once before giving up.
-    if (typeof e.code !== "number" && retries > 0) {
-      await new Promise((resolve) => setTimeout(resolve, 500));
-      return runCli(cwd, args, retries - 1);
+    const e = err as { code?: number | string; stdout?: string; stderr?: string; errno?: number | string; syscall?: string; message?: string };
+    // A codeless spawn failure (e.g. transient EMFILE/EBUSY under parallel
+    // load) is environmental, not a product result: retry once, then fail
+    // loudly. Never synthesize {code: 1, stdout: "", stderr: ""} because that
+    // masquerades as a product failure and trips output assertions.
+    if (typeof e.code !== "number") {
+      if (retries > 0) {
+        await new Promise((resolve) => setTimeout(resolve, 500));
+        return runCli(cwd, args, retries - 1);
+      }
+      throw new Error(
+        "runCli harness spawn failed for " + JSON.stringify(args) +
+        " code=" + String(e.code) +
+        " errno=" + String(e.errno ?? "?") +
+        " syscall=" + String(e.syscall ?? "?") +
+        " message=" + String(e.message ?? "?") +
+        " stdout=" + JSON.stringify(e.stdout ?? "") +
+        " stderr=" + JSON.stringify(String(e.stderr ?? "").slice(0, 2000))
+      );
     }
     return { code: e.code ?? 1, stdout: e.stdout ?? "", stderr: e.stderr ?? "" };
   }
@@ -69,8 +80,6 @@ const PASSING_CONFIG = [
 const FAILING_CONFIG = PASSING_CONFIG.replace("cli-pass", "cli-fail").replace("tags: [smoke]", "tags: [broken]").replace("exitCode: 0\n", "exitCode: 0\n      stdout:\n        contains: this-never-appears\n");
 
 describe("recurspec CLI", () => {
-  beforeAll(ensureBuilt, 240000);
-
   it("--version reports the package version", async () => {
     const res = await runCli(repoRoot, ["--version"]);
     expect(res.code).toBe(0);

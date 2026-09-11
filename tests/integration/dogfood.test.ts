@@ -1,26 +1,18 @@
-﻿import { execFile } from "node:child_process";
-import path from "node:path";
-import { promisify } from "node:util";
-import { beforeAll, describe, expect, it } from "vitest";
+﻿import path from "node:path";
+import { describe, expect, it } from "vitest";
 import { configNotFoundError } from "../../src/config/loader.js";
 import { extractFromStreams } from "../../src/recovery/extractor.js";
 import { baseConfig, repoRoot } from "../helpers/acme.js";
 import { runCase } from "../../src/runner/runner.js";
 import type { RecoveryCase } from "../../src/types/config.js";
 
-const execFileAsync = promisify(execFile);
 const distCli = path.join(repoRoot, "dist", "cli.js");
 
-async function ensureBuilt(): Promise<void> {
-  await execFileAsync(process.execPath, [path.join(repoRoot, "node_modules", "typescript", "bin", "tsc"), "-p", "tsconfig.build.json"], {
-    cwd: repoRoot,
-    timeout: 240000
-  });
-}
+// Note: dist is built once in tests/global-setup.ts before workers start.
+// Test files must never rebuild/overwrite dist themselves: concurrent tsc
+// writes while other workers use dist race on Windows file locking.
 
 describe("dogfood: recurspec tests its own recovery messages", () => {
-  beforeAll(ensureBuilt, 240000);
-
   it("the missing-config error carries machine-extractable advice", () => {
     const message = configNotFoundError("/some/dir").message;
     const found = extractFromStreams("", message);
