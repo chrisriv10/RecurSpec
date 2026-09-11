@@ -138,4 +138,47 @@ describe("reporter correctness on hostile input", () => {
     expect(text).toContain("confidence: 0.75, source: stderr line 5 (hint)");
     expect(text).toContain("RecurSpec will not guess between equally ranked recovery paths.");
   });
+
+  it("markdown preserves table cell escaping for hostile ambiguous candidates", () => {
+    const hostile = nastyCase({
+      name: "hostile-amb",
+      status: "AMBIGUOUS_RECOVERY",
+      originalCommand: "acme test",
+      extractedAdvice: [
+        { command: "echo", args: ["pipe|inside", "and `backtick`"], raw: "echo pipe|inside and `backtick`", source: "stderr", line: 1, confidence: 0.9, pattern: "hint-colon" },
+        { command: "echo", args: ["line\nbreak"], raw: "echo line\nbreak", source: "stderr", line: 2, confidence: 0.9, pattern: "hint-colon" }
+      ]
+    });
+    const md = renderMarkdown(buildRunResult([hostile], []));
+    const rows = md.split("\n").filter((l) => l.startsWith("| "));
+    // header + 1 case row
+    expect(rows.length).toBe(2);
+    expect(md).toContain("pipe\\|inside");
+    expect(md).toContain("'backtick'");
+    expect(md).toContain("line<br/>break");
+  });
+
+  it("markdown caps ambiguous candidates when exceeding limit", () => {
+    const manyCandidates = Array.from({ length: 8 }, (_, i) => ({
+      command: "step",
+      args: [String(i + 1)],
+      raw: `step ${i + 1}`,
+      source: "stderr" as const,
+      line: i + 1,
+      confidence: 0.8,
+      pattern: "hint-colon"
+    }));
+    const capped = nastyCase({
+      name: "capped-amb",
+      status: "AMBIGUOUS_RECOVERY",
+      originalCommand: "run",
+      extractedAdvice: manyCandidates
+    });
+    const md = renderMarkdown(buildRunResult([capped], []));
+    expect(md).toContain("'step 1'");
+    expect(md).toContain("'step 5'");
+    expect(md).not.toContain("'step 6'");
+    expect(md).toContain("(+3 more)");
+  });
 });
+

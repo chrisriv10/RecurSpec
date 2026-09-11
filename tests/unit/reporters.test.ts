@@ -66,6 +66,21 @@ describe("reporters", () => {
     expect(md).toContain("ok-case");
   });
 
+  it("markdown renders ambiguous candidate commands in the recovery cell", () => {
+    const ambiguous = stubCase({
+      name: "ambiguous-case",
+      status: "AMBIGUOUS_RECOVERY",
+      originalCommand: "acme sync",
+      extractedAdvice: [
+        { command: "git", args: ["checkout", "main"], raw: "git checkout main", source: "stderr", line: 2, confidence: 0.8, pattern: "hint-colon" },
+        { command: "git", args: ["switch", "main"], raw: "git switch main", source: "stderr", line: 3, confidence: 0.8, pattern: "hint-colon" }
+      ]
+    });
+    const md = renderMarkdown(buildRunResult([ambiguous], []));
+    expect(md).toContain("| ❌ | ambiguous-case |");
+    expect(md).toContain("AMBIGUOUS_RECOVERY after 'acme sync': 'git checkout main', 'git switch main'");
+  });
+
   it("terminal output groups failures with status", () => {
     const result = buildRunResult([passing, failing], []);
     const text = renderTerminal(result, { version: "0.1.0" });

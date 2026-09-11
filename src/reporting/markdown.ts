@@ -15,7 +15,20 @@ export function renderMarkdown(result: RunResult): string {
     // Only retry recovery reruns the original command.
     if (c.status === "PASS" && c.completion.mode === "retry") parts.push(c.originalCommand);
     const chain = parts.join(" → ");
-    const recovery = c.status === "PASS" ? "`" + chain + "`" : c.status + " after `" + chain + "`";
+    let recovery: string;
+    if (c.status === "PASS") {
+      recovery = "`" + chain + "`";
+    } else if (c.status === "AMBIGUOUS_RECOVERY" && c.extractedAdvice.length > 0) {
+      const shown = c.extractedAdvice.slice(0, 5);
+      const candidates = shown.map((a) => {
+        const cmd = a.command + (a.args.length > 0 ? " " + a.args.join(" ") : "");
+        return "`" + cmd + "`";
+      });
+      const extra = c.extractedAdvice.length > 5 ? " (+" + (c.extractedAdvice.length - 5) + " more)" : "";
+      recovery = c.status + " after `" + chain + "`: " + candidates.join(", ") + extra;
+    } else {
+      recovery = c.status + " after `" + chain + "`";
+    }
     lines.push("| " + icon + " | " + escCell(c.name) + " | " + escCell(recovery) + " |");
   }
   return lines.join("\n") + "\n";
