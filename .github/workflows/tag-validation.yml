@@ -1,0 +1,25 @@
+name: Tag validation
+
+# Throwaway validation for the published v0.2.0 tag. Uses the tag itself,
+# not the local checkout. Delete this branch after validation.
+on:
+  pull_request:
+
+jobs:
+  tagged-action:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: chrisriv10/RecurSpec@v0.2.0
+        id: rs
+        with:
+          config: ci/recurspec.ci.yml
+
+      - name: Tagged action reports pass outputs
+        if: steps.rs.outputs.status != 'pass'
+        run: exit 1
