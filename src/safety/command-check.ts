@@ -39,8 +39,8 @@ const SHELL_STRING_FLAGS: Record<string, RegExp> = {
   dash: /^-c$/,
   zsh: /^-c$/,
   fish: /^-c$/,
-  powershell: /^(-c|-command|-encodedcommand)$/i,
-  pwsh: /^(-c|-command|-encodedcommand)$/i,
+  powershell: /^(-c|-command|-encodedcommand|-file|-f)$/i,
+  pwsh: /^(-c|-command|-encodedcommand|-file|-f)$/i,
   cmd: /^\/[ck]$/i
 };
 

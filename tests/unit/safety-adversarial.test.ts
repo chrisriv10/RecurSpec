@@ -1,4 +1,4 @@
-﻿import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import { checkCommandSafety, checkRawCommandLine } from "../../src/safety/command-check.js";
 
 function blocked(command: string, args: string[] = [], options: object = {}): string {
@@ -64,9 +64,19 @@ describe("shell escape attempts are refused", () => {
     blocked("bash", ["-c", "evil"]);
     blocked("powershell", ["-Command", "evil"]);
     blocked("powershell", ["-NoProfile", "-Command", "evil"]);
+    blocked("powershell", ["-File", "evil.ps1"]);
+    blocked("powershell", ["-File", "C:\\scripts\\evil.ps1"]);
+    blocked("powershell", ["-File", "/tmp/evil.ps1"]);
+    blocked("pwsh", ["-File", "evil.ps1"]);
+    blocked("pwsh", ["-File", "/tmp/evil.ps1"]);
     blocked("pwsh", ["-EncodedCommand", "aGk="]);
     blocked("cmd", ["/c", "dir"]);
     blocked("cmd", ["/k", "dir"]);
+  });
+
+  it("blocks powershell and pwsh -File even when listed in allowedCommands", () => {
+    blocked("powershell", ["-File", "evil.ps1"], { allowedCommands: ["powershell"] });
+    blocked("pwsh", ["-File", "evil.ps1"], { allowedCommands: ["pwsh"] });
   });
 
   it("blocks PowerShell invocation helpers", () => {
@@ -113,6 +123,11 @@ describe("no unnecessary false positives", () => {
 
   it("allows plain shell scripts without code-string flags", () => {
     allowed("sh", ["script.sh"]);
+  });
+
+  it("allows bare powershell and pwsh without flags", () => {
+    allowed("powershell", []);
+    allowed("pwsh", []);
   });
 });
 
