@@ -1,4 +1,4 @@
-﻿import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import { checkCommandSafety, checkRawCommandLine } from "../../src/safety/command-check.js";
 
 function blocked(command: string, args: string[] = [], options: object = {}): string {
@@ -64,9 +64,51 @@ describe("shell escape attempts are refused", () => {
     blocked("bash", ["-c", "evil"]);
     blocked("powershell", ["-Command", "evil"]);
     blocked("powershell", ["-NoProfile", "-Command", "evil"]);
+    blocked("powershell", ["-File", "evil.ps1"]);
+    blocked("powershell", ["-f", "evil.ps1"]);
+    blocked("powershell", ["-CommandWithArgs", "evil"]);
+    blocked("powershell", ["-cwa", "evil"]);
+    blocked("powershell", ["-File", "C:\\scripts\\evil.ps1"]);
+    blocked("powershell", ["-File", "/tmp/evil.ps1"]);
+    blocked("pwsh", ["-File", "evil.ps1"]);
+    blocked("pwsh", ["-f", "evil.ps1"]);
+    blocked("pwsh", ["-CommandWithArgs", "evil"]);
+    blocked("pwsh", ["-cwa", "evil"]);
+    blocked("pwsh", ["-File", "/tmp/evil.ps1"]);
     blocked("pwsh", ["-EncodedCommand", "aGk="]);
+    blocked("pwsh", ["-e", "aGk="]);
+    blocked("pwsh", ["-ec", "aGk="]);
+    blocked("powershell", ["-EncodedCommand", "aGk="]);
+    blocked("powershell", ["-e", "aGk="]);
+    blocked("powershell", ["-ec", "aGk="]);
     blocked("cmd", ["/c", "dir"]);
     blocked("cmd", ["/k", "dir"]);
+  });
+
+  it("blocks powershell and pwsh -File even when listed in allowedCommands", () => {
+    blocked("powershell", ["-File", "evil.ps1"], { allowedCommands: ["powershell"] });
+    blocked("pwsh", ["-File", "evil.ps1"], { allowedCommands: ["pwsh"] });
+  });
+
+  it("blocks implicit script execution in powershell and pwsh", () => {
+    blocked("powershell", ["evil.ps1"]);
+    blocked("powershell", ["./evil.ps1"]);
+    blocked("powershell", ["C:\\scripts\\evil.ps1"]);
+    blocked("powershell", ["/tmp/evil.ps1"]);
+    blocked("powershell", ["-NoProfile", "evil.ps1"]);
+    blocked("powershell", ["evil.ps1", "arg1"]);
+    blocked("powershell", ["\"evil.ps1\""]);
+    blocked("powershell", ["evil.psm1"]);
+    blocked("powershell", ["evil.psd1"]);
+    blocked("pwsh", ["evil.ps1"]);
+    blocked("pwsh", ["./evil.ps1"]);
+    blocked("pwsh", ["C:\\scripts\\evil.ps1"]);
+    blocked("pwsh", ["/tmp/evil.ps1"]);
+    blocked("pwsh", ["-NoProfile", "evil.ps1"]);
+    blocked("pwsh", ["evil.ps1", "arg1"]);
+    blocked("pwsh", ["\"evil.ps1\""]);
+    blocked("powershell", ["evil.ps1"], { allowedCommands: ["powershell"] });
+    blocked("pwsh", ["evil.ps1"], { allowedCommands: ["pwsh"] });
   });
 
   it("blocks PowerShell invocation helpers", () => {
@@ -113,6 +155,11 @@ describe("no unnecessary false positives", () => {
 
   it("allows plain shell scripts without code-string flags", () => {
     allowed("sh", ["script.sh"]);
+  });
+
+  it("allows bare powershell and pwsh without flags", () => {
+    allowed("powershell", []);
+    allowed("pwsh", []);
   });
 });
 

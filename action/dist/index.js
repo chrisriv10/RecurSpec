@@ -37899,8 +37899,8 @@ var SHELL_STRING_FLAGS = {
   dash: /^-c$/,
   zsh: /^-c$/,
   fish: /^-c$/,
-  powershell: /^(-c|-command|-encodedcommand)$/i,
-  pwsh: /^(-c|-command|-encodedcommand)$/i,
+  powershell: /^[-/](c|command|commandwithargs|cwa|encodedcommand|e|ec|file|f)$/i,
+  pwsh: /^[-/](c|command|commandwithargs|cwa|encodedcommand|e|ec|file|f)$/i,
   cmd: /^\/[ck]$/i
 };
 function isAbsoluteTarget(arg) {
@@ -37962,6 +37962,11 @@ function checkCommandSafety(command, args, options = {}) {
   const shellFlag = SHELL_STRING_FLAGS[lowerBase];
   if (shellFlag && args.some((a2) => shellFlag.test(a2))) {
     return { ok: false, reason: "Executing a code string via " + JSON.stringify(exe) + " is blocked. Only fixed argv commands run without a shell." };
+  }
+  if (lowerBase === "powershell" || lowerBase === "pwsh") {
+    if (args.some((a2) => /\.(ps1|psm1|psd1)$/i.test(a2.trim().replace(/^["']+|["']+$/g, "")))) {
+      return { ok: false, reason: "Executing a script via " + JSON.stringify(exe) + " is blocked. Only fixed argv commands run without a shell." };
+    }
   }
   if (DELETE_COMMANDS.has(lowerBase)) {
     const joined = args.join(" ");

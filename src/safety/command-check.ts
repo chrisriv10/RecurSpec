@@ -39,8 +39,8 @@ const SHELL_STRING_FLAGS: Record<string, RegExp> = {
   dash: /^-c$/,
   zsh: /^-c$/,
   fish: /^-c$/,
-  powershell: /^(-c|-command|-encodedcommand)$/i,
-  pwsh: /^(-c|-command|-encodedcommand)$/i,
+  powershell: /^[-/](c|command|commandwithargs|cwa|encodedcommand|e|ec|file|f)$/i,
+  pwsh: /^[-/](c|command|commandwithargs|cwa|encodedcommand|e|ec|file|f)$/i,
   cmd: /^\/[ck]$/i
 };
 
@@ -103,6 +103,12 @@ export function checkCommandSafety(command: string, args: string[], options: Saf
   const shellFlag = SHELL_STRING_FLAGS[lowerBase];
   if (shellFlag && args.some((a) => shellFlag.test(a))) {
     return { ok: false, reason: "Executing a code string via " + JSON.stringify(exe) + " is blocked. Only fixed argv commands run without a shell." };
+  }
+
+  if (lowerBase === "powershell" || lowerBase === "pwsh") {
+    if (args.some((a) => /\.(ps1|psm1|psd1)$/i.test(a.trim().replace(/^["']+|["']+$/g, "")))) {
+      return { ok: false, reason: "Executing a script via " + JSON.stringify(exe) + " is blocked. Only fixed argv commands run without a shell." };
+    }
   }
 
   if (DELETE_COMMANDS.has(lowerBase)) {
