@@ -60,6 +60,13 @@
 - Explicit `recovery.steps` are safety-preflighted and fail rather than being
   silently truncated when they exceed `maxHops`.
 - `Run one of ...`-style prose no longer yields a phantom `one` candidate.
+- Workspace path containment uses segment-aware checks so legitimate
+  dot-prefixed directories such as `..cache` are allowed while `..`
+  traversal and symlink escapes remain refused.
+- Git missing-identity real-world cases now force `user.useConfigOnly=true`
+  through `GIT_CONFIG_COUNT`/`GIT_CONFIG_KEY_0`/`GIT_CONFIG_VALUE_0`, so the
+  failure is deterministic on every platform instead of depending on the
+  runner hostname.
 
 ## 0.2.0
 

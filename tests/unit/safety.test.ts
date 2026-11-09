@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { checkCommandSafety } from "../../src/safety/command-check.js";
-import { isDangerousWorkspacePath } from "../../src/safety/paths.js";
+import { isDangerousWorkspacePath, isPathInside } from "../../src/safety/paths.js";
 
 describe("checkCommandSafety", () => {
   it("allows ordinary commands", () => {
@@ -54,5 +54,41 @@ describe("isDangerousWorkspacePath", () => {
     expect(isDangerousWorkspacePath("fixtures/basic-project/**")).toBe(false);
     expect(isDangerousWorkspacePath(".acme/config.json")).toBe(false);
     expect(isDangerousWorkspacePath(".")).toBe(false);
+  });
+
+  it("accepts legitimate dot-prefixed directories such as ..cache", () => {
+    expect(isDangerousWorkspacePath("..cache/file.txt")).toBe(false);
+    expect(isDangerousWorkspacePath(".cache/file.txt")).toBe(false);
+  });
+
+  it("still rejects parent traversal", () => {
+    expect(isDangerousWorkspacePath("../outside")).toBe(true);
+    expect(isDangerousWorkspacePath("a/../../b")).toBe(true);
+  });
+});
+
+describe("isPathInside", () => {
+  const root = "/workspace";
+
+  it("accepts the root itself", () => {
+    expect(isPathInside(root, root)).toBe(true);
+  });
+
+  it("accepts paths inside the workspace", () => {
+    expect(isPathInside(root, "/workspace/sub/file")).toBe(true);
+    expect(isPathInside(root, "/workspace/..cache/file.txt")).toBe(true);
+    expect(isPathInside(root, "/workspace/.cache/file.txt")).toBe(true);
+  });
+
+  it("rejects parent traversal and outside paths", () => {
+    expect(isPathInside(root, "/workspace/..")).toBe(false);
+    expect(isPathInside(root, "/outside")).toBe(false);
+    expect(isPathInside(root, "/tmp/other")).toBe(false);
+    expect(isPathInside(root, "/etc/passwd")).toBe(false);
+  });
+
+  it("rejects absolute paths outside the workspace", () => {
+    expect(isPathInside(root, "/etc/passwd")).toBe(false);
+    expect(isPathInside(root, "/tmp/other")).toBe(false);
   });
 });

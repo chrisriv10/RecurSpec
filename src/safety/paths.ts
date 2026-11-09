@@ -20,11 +20,18 @@ export function isDangerousWorkspacePath(p: string): boolean {
   return false;
 }
 
+export function isPathInside(root: string, target: string): boolean {
+  const relative = path.relative(root, target);
+  if (relative === "") return true;
+  if (path.isAbsolute(relative)) return false;
+  // A segment that begins with ".." means an actual parent step; a directory
+  // literally named "..cache" (or ".cache") is not an escape attempt.
+  return relative !== ".." && !relative.startsWith(".." + path.sep);
+}
+
 export function resolveInWorkspace(workspaceDir: string, target: string): string {
   const resolved = path.resolve(workspaceDir, target);
-  const relative = path.relative(workspaceDir, resolved);
-  if (relative === "") return resolved;
-  if (relative.startsWith("..") || path.isAbsolute(relative)) {
+  if (!isPathInside(workspaceDir, resolved)) {
     throw new Error("Refusing to touch path outside the workspace: " + target);
   }
   return resolved;
