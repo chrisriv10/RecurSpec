@@ -4,10 +4,11 @@ Tested against git 2.50.1 (windows). Assertions use stable substrings only.
 
 ## Cases
 
-- `git-missing-identity` (AMBIGUOUS_RECOVERY): `git commit` with no identity
-  prints a bare `Run` label followed by two `git config --global` commands.
-  Both are extracted; a single-command executor cannot know both are needed,
-  so ambiguity is the honest verdict.
+- `git-missing-identity` (PASS): `git commit` with no identity prints a bare
+  `Run` label followed by two `git config --global` commands. The label plus
+  the shared executable and complementary keys (`user.email`, `user.name`)
+  are strong evidence that both commands are a required sequence. RecurSpec
+  executes them in order and the retried commit succeeds.
 - `git-missing-identity-explicit` (PASS): same failure with the documented
   two-step recovery. Proves the advice itself works when fully applied.
 - `git-unmerged-branch` (PASS via `verify.mode: goal`): `run 'git branch -D side'` is

@@ -1,4 +1,5 @@
 import { tokenizeCommandLine } from "./tokenizer.js";
+import { attachAdviceGroups } from "./grouping.js";
 import type { ExtractedAdvice } from "../types/result.js";
 
 interface RawHit {
@@ -6,6 +7,7 @@ interface RawHit {
   pattern: string;
   confidence: number;
   line: number;
+  column: number;
 }
 
 const LEAD_PATTERNS: Array<{ re: RegExp; pattern: string; confidence: number }> = [
@@ -61,7 +63,15 @@ function harvestHintLine(line: string, lineNumber: number, hits: RawHit[]): void
   const candidate = stripWrapping(m[2] ?? "");
   if (candidate.length === 0 || candidate.length > 300) return;
   if (candidate.split(/\s+/).length < 2) return;
-  hits.push({ raw: candidate, pattern: "hint-colon", confidence: 0.75, line: lineNumber });
+  const captured = m[2] ?? "";
+  const offset = m[0].indexOf(captured);
+  hits.push({
+    raw: candidate,
+    pattern: "hint-colon",
+    confidence: 0.75,
+    line: lineNumber,
+    column: Math.max(0, m.index + (offset >= 0 ? offset : 0))
+  });
 }
 
 function harvestFromLine(line: string, lineNumber: number, hits: RawHit[]): void {
@@ -71,7 +81,14 @@ function harvestFromLine(line: string, lineNumber: number, hits: RawHit[]): void
     if (m && m[1]) {
       const candidate = stripWrapping(m[1]);
       if (candidate.length > 0 && candidate.length <= 300) {
-        hits.push({ raw: candidate, pattern: lead.pattern, confidence: lead.confidence, line: lineNumber });
+        const offset = m[0].indexOf(m[1]);
+        hits.push({
+          raw: candidate,
+          pattern: lead.pattern,
+          confidence: lead.confidence,
+          line: lineNumber,
+          column: Math.max(0, m.index + (offset >= 0 ? offset : 0))
+        });
       }
     }
   }
@@ -84,7 +101,15 @@ function harvestFromLine(line: string, lineNumber: number, hits: RawHit[]): void
       guard += 1;
       const candidate = stripWrapping(m[1] ?? "");
       if (candidate.length > 0 && candidate.length <= 300) {
-        hits.push({ raw: candidate, pattern: inline.pattern, confidence: inline.confidence, line: lineNumber });
+        const captured = m[1] ?? "";
+        const offset = m[0].indexOf(captured);
+        hits.push({
+          raw: candidate,
+          pattern: inline.pattern,
+          confidence: inline.confidence,
+          line: lineNumber,
+          column: Math.max(0, m.index + (offset >= 0 ? offset : 0))
+        });
       }
       if (m[0].length === 0) re.lastIndex += 1;
       if (!inline.pattern.endsWith("-backticks")) break;
@@ -93,17 +118,26 @@ function harvestFromLine(line: string, lineNumber: number, hits: RawHit[]): void
 }
 
 function harvestFencedBlocks(text: string, hits: RawHit[]): void {
-  const fence = /```(?:\w+)?\n([\s\S]*?)```/g;
+  const fence = /```[^\n]*\n([\s\S]*?)```/g;
   let m: RegExpExecArray | null;
   while ((m = fence.exec(text)) !== null) {
     const body = m[1] ?? "";
     const before = text.slice(0, m.index);
-    const baseLine = before.split("\n").length;
+    // `before` ends on the opening-fence line, so the first body line is the
+    // next one. (Splitting the opening line itself off counted one too few.)
+    const firstBodyLine = before.split("\n").length + 1;
     body.split("\n").forEach((line, idx) => {
       const cleaned = line.trim().replace(/^[$#>%]\s*/, "").trim();
       if (cleaned.length === 0 || cleaned.length > 300) return;
       if (/^[a-zA-Z0-9_@.][A-Za-z0-9_@.:/\\-]*(\s+.+)?$/.test(cleaned)) {
-        hits.push({ raw: cleaned, pattern: "fenced-code-block", confidence: 0.85, line: baseLine + idx });
+        const indent = line.search(/\S/);
+        hits.push({
+          raw: cleaned,
+          pattern: "fenced-code-block",
+          confidence: 0.85,
+          line: firstBodyLine + idx,
+          column: Math.max(0, indent)
+        });
       }
     });
   }
@@ -146,19 +180,31 @@ function harvestContinuations(lines: string[], hits: RawHit[]): void {
       }
       started = true;
       if (next.length > 300) break;
-      hits.push({ raw: next, pattern: lead.pattern, confidence: lead.confidence, line: j + 1 });
+      const indent = (lines[j] as string).search(/\S/);
+      hits.push({
+        raw: next,
+        pattern: lead.pattern,
+        confidence: lead.confidence,
+        line: j + 1,
+        column: Math.max(0, indent)
+      });
       collected += 1;
     }
   }
 }
 
 function collectForStream(text: string, source: "stderr" | "stdout", options: ExtractionOptions): ExtractedAdvice[] {
-  const clean = stripAnsi(text);
+  // Normalize newlines before line accounting so CRLF diagnostics keep the
+  // same line numbers and fenced blocks are recognized.
+  const clean = stripAnsi(text).replace(/\r\n/g, "\n").replace(/\r/g, "\n");
   const hits: RawHit[] = [];
   harvestFencedBlocks(clean, hits);
   const lines = clean.split("\n");
   lines.forEach((line, idx) => harvestFromLine(line, idx + 1, hits));
   harvestContinuations(lines, hits);
+  // Pattern processing order is not textual order ("run" is checked before
+  // "try"), so restore the position in the original output before grouping.
+  hits.sort((a, b) => a.line - b.line || a.column - b.column);
   const out: ExtractedAdvice[] = [];
   const seen = new Set<string>();
   for (const hit of hits) {
@@ -180,11 +226,12 @@ function collectForStream(text: string, source: "stderr" | "stdout", options: Ex
       raw: hit.raw,
       source,
       line: hit.line,
+      column: hit.column,
       confidence: hit.confidence,
       pattern: hit.pattern
     });
   }
-  return out;
+  return attachAdviceGroups(out, lines, source);
 }
 
 export function extractFromStreams(
@@ -217,6 +264,6 @@ function isPlausibleCommand(command: string): boolean {
   if (command.length > 64) return false;
   // A bare English word (modal, auxiliary, preposition, ...) after "run" is
   // prose ("run can be found in: ..."), never an executable name.
-  if (/^(and|or|the|then|with|from|this|that|your|you|run|try|use|be|is|are|was|were|been|being|has|have|had|do|does|did|can|could|should|would|may|might|must|shall|will|to|in|on|at|by|for|of|a|an|if|when|where|how|why|what|which|who|not|no|it|as|so)$/i.test(command)) return false;
+  if (/^(and|or|the|then|with|from|this|that|your|you|run|try|use|be|is|are|was|were|been|being|has|have|had|do|does|did|can|could|should|would|may|might|must|shall|will|to|in|on|at|by|for|of|a|an|if|when|where|how|why|what|which|who|not|no|it|as|so|one|either|following)$/i.test(command)) return false;
   return /^[A-Za-z0-9_@.][A-Za-z0-9_@.:/\\-]*$/.test(command);
 }

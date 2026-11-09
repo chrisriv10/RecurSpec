@@ -102,17 +102,21 @@ The compatibility suite includes recovery cases from Git, Cargo, and npm.
 
 | Tool | Case | Result |
 | --- | --- | --- |
-| Git | Missing identity | Ambiguous: two commands, both required |
+| Git | Missing identity | Pass: two required commands run as an ordered sequence |
 | Git | Branch deletion | Goal recovery: branch gone, no retry |
 | Git | Divergent pull advice | Ambiguous: three exclusive options |
-| Cargo | Existing project directory | Goal recovery: project initialized |
+| Cargo | Existing project directory | Goal recovery: project initialized in place, parent untouched |
+| Cargo | Parent-directory `new proj` | Expected negative: advice omits the target path |
 | npm | Missing script | Correctly ignored: informational only |
 
 Cargo helped uncover a flaw in RecurSpec original model. `cargo init` can complete
 the user goal even though retrying `cargo new` will still fail. That led to
-goal-based verification.
+goal-based verification. A later fixture showed the same advice could pass while
+initializing the wrong directory; the fixture now runs the advice inside the
+intended project and verifies both the goal and the untouched parent.
 
-Run them with `pnpm test:real-world` (missing tools are skipped).
+Run them with `pnpm test:real-world` (tool versions are printed, missing tools
+are skipped explicitly, and expected negative outcomes are counted separately).
 
 ## What it catches
 

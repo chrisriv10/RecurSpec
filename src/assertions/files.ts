@@ -35,7 +35,13 @@ export async function checkFiles(
     });
   }
   for (const rel of files.notExists ?? []) {
-    const resolved = resolveInWorkspace(workspaceDir, rel);
+    let resolved: string;
+    try {
+      resolved = resolveInWorkspace(workspaceDir, rel);
+    } catch (err) {
+      details.push({ ok: false, kind: "files.notExists", message: String((err as Error).message) });
+      continue;
+    }
     const found = await exists(resolved);
     details.push({
       ok: !found,

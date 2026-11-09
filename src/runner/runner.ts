@@ -2,7 +2,7 @@ import { parseDuration } from "../config/duration.js";
 import { checkExitCode, checkStream } from "../assertions/output.js";
 import { deriveRecoveryPlan } from "../recovery/engine.js";
 import { extractFromStreams } from "../recovery/extractor.js";
-import { rankCandidates, selectCandidate } from "../recovery/ranking.js";
+import { rankCandidates, selectCandidate, buildDecision } from "../recovery/ranking.js";
 import { checkCommandSafety } from "../safety/command-check.js";
 import { resolveInWorkspace } from "../safety/paths.js";
 import { effectiveSafety, networkWarning } from "../safety/policy.js";
@@ -22,6 +22,7 @@ import type {
   CaseStatus,
   ExecutedCommand,
   ExtractedAdvice,
+  RecoveryDecision,
   SafetyEvaluation,
   VerificationDetail
 } from "../types/result.js";
@@ -41,6 +42,10 @@ function clampHops(value: number | undefined): number {
   if (value < 1) return 1;
   if (value > 10) return 10;
   return Math.floor(value);
+}
+
+function adviceKey(candidate: ExtractedAdvice): string {
+  return [candidate.source, candidate.command, candidate.args.join("\u0000"), candidate.line, candidate.pattern].join("\u0001");
 }
 
 export async function runStepsBestEffort(
@@ -81,11 +86,14 @@ export async function runCase(
   let initialFailure: ExecutedCommand | null = null;
   let extractedAdvice: ExtractedAdvice[] = [];
   let selectedAdvice: ExtractedAdvice | null = null;
+  let decisionKind: RecoveryDecision["kind"] | null = null;
+  let decisionEvidence: string | undefined;
+  let decisionRanked: ExtractedAdvice[] = [];
+  let decisionSelected: ExtractedAdvice[] = [];
   let failureMatched = false;
   let failureDetail: string | undefined;
   let blockedReason: string | undefined;
   let errorDetail: string | undefined;
-  let hops = 0;
 
   const finish = async (finalStatus: CaseStatus): Promise<CaseResult> => {
     const failed = finalStatus !== "PASS";
@@ -109,7 +117,7 @@ export async function runCase(
       stdout: maskSecrets(cmd.stdout, secrets, caseEnv),
       stderr: maskSecrets(cmd.stderr, secrets, caseEnv)
     });
-    return {
+    const result: CaseResult = {
       name: kase.name,
       description: kase.description,
       tags: kase.tags,
@@ -133,6 +141,45 @@ export async function runCase(
       workspace: workspacePath,
       error: errorDetail
     };
+    if (decisionKind !== null) {
+      let ranked = decisionRanked;
+      let selection;
+      if (decisionKind === "sequence") {
+        // The executed queue is the source of truth for step numbering. This
+        // also covers chains assembled from follow-up advice at runtime.
+        const size = decisionSelected.length;
+        const chain = decisionSelected.map((candidate, index) => ({
+          ...candidate,
+          group: {
+            id: "decision-sequence",
+            relation: "sequence" as const,
+            evidence: decisionEvidence ?? "executed recovery sequence",
+            index,
+            size
+          }
+        }));
+        const chainByKey = new Map(chain.map((candidate) => [adviceKey(candidate), candidate]));
+        ranked = decisionRanked.map((candidate) => chainByKey.get(adviceKey(candidate)) ?? candidate);
+        selection = { kind: "sequence", candidates: chain, evidence: decisionEvidence ?? "" } as const;
+      } else if (decisionKind === "single" && decisionSelected[0]) {
+        selection = { kind: "single", candidate: decisionSelected[0] } as const;
+      } else if (decisionKind === "ambiguous") {
+        selection = { kind: "ambiguous", candidates: decisionRanked, evidence: decisionEvidence } as const;
+      } else {
+        selection = { kind: "none" } as const;
+      }
+      result.decision = buildDecision(
+        decisionKind,
+        selection,
+        ranked,
+        {
+          prefer: kase.recovery?.prefer ?? ["stderr", "stdout"],
+          originalCommand: kase.run.command
+        },
+        decisionEvidence
+      );
+    }
+    return result;
   };
 
   try {
@@ -252,12 +299,11 @@ export async function runCase(
     caseDenyCommands: safety.caseDenyCommands
   };
 
-  const executeRecoveryCommand = async (
+  const evaluateRecoveryCommand = (
     command: string,
     args: string[],
-    stdin?: string[],
     advice?: { source: "stderr" | "stdout"; line: number; pattern: string } | null
-  ): Promise<{ result: ExecutedCommand; blocked?: string } | { result: null; blocked: string }> => {
+  ): SafetyEvaluation => {
     const check = checkCommandSafety(command, args, safetyOpts);
     const evaluation: SafetyEvaluation = advice
       ? { command, args, verdict: "allowed", reason: "", source: advice.source, line: advice.line, pattern: advice.pattern }
@@ -265,11 +311,24 @@ export async function runCase(
     if (!check.ok) {
       evaluation.verdict = "blocked";
       evaluation.reason = check.reason ?? "Blocked by safety policy.";
-      safetyEvaluations.push(evaluation);
+    } else {
+      evaluation.reason = "passes safety policy (shell: " + (safety.shell ? "enabled" : "disabled") + ")";
+    }
+    safetyEvaluations.push(evaluation);
+    return evaluation;
+  };
+
+  const executeRecoveryCommand = async (
+    command: string,
+    args: string[],
+    stdin?: string[],
+    advice?: { source: "stderr" | "stdout"; line: number; pattern: string } | null,
+    prechecked?: SafetyEvaluation
+  ): Promise<{ result: ExecutedCommand; blocked?: string } | { result: null; blocked: string }> => {
+    const evaluation = prechecked ?? evaluateRecoveryCommand(command, args, advice);
+    if (evaluation.verdict === "blocked") {
       return { result: null, blocked: evaluation.reason };
     }
-    evaluation.reason = "passes safety policy (shell: " + (safety.shell ? "enabled" : "disabled") + ")";
-    safetyEvaluations.push(evaluation);
     const step: StepSpec = stdin ? { command, args, stdin } : { command, args };
     let result: ExecutedCommand;
     try {
@@ -288,9 +347,187 @@ export async function runCase(
     }
 
     recoverySteps.push(result);
-    hops = recoverySteps.length;
     graph.addNode("recovery_result", displayCommand(command, args) + " -> exit " + String(result.exitCode));
     return { result };
+  };
+
+  interface QueuedStep {
+    advice: ExtractedAdvice;
+    evaluation?: SafetyEvaluation;
+  }
+
+  type EnqueueResult =
+    | { ok: true }
+    | { ok: false; kind: "budget"; message: string }
+    | { ok: false; kind: "blocked"; reason: string };
+
+  const sequenceBudgetError = (required: number): string | undefined => {
+    const remaining = maxHops - recoverySteps.length;
+    if (required <= remaining) return undefined;
+    return (
+      "Required recovery sequence has " + required + " step(s), but only " + remaining +
+      " of " + maxHops + " recovery hop(s) remain. RecurSpec refuses to run a partial required sequence."
+    );
+  };
+
+  const preflightSequence = (
+    candidates: ExtractedAdvice[]
+  ): { ok: true; evaluations: SafetyEvaluation[] } | { ok: false; reason: string } => {
+    const evaluations = candidates.map((candidate) =>
+      evaluateRecoveryCommand(candidate.command, candidate.args, candidate)
+    );
+    const blocked = evaluations.find((evaluation) => evaluation.verdict === "blocked");
+    if (blocked) return { ok: false, reason: blocked.reason };
+    return { ok: true, evaluations };
+  };
+
+  const enqueueSequence = (pending: QueuedStep[], candidates: ExtractedAdvice[]): EnqueueResult => {
+    const message = sequenceBudgetError(pending.length + candidates.length);
+    if (message) return { ok: false, kind: "budget", message };
+    const preflight = preflightSequence(candidates);
+    if (!preflight.ok) return { ok: false, kind: "blocked", reason: preflight.reason };
+    candidates.forEach((candidate, index) => {
+      pending.push({ advice: candidate, evaluation: preflight.evaluations[index] });
+    });
+    return { ok: true };
+  };
+
+  const extendDecisionChain = (candidates: ExtractedAdvice[], ranked: ExtractedAdvice[], evidence: string): void => {
+    decisionSelected.push(...candidates);
+    for (const candidate of ranked) {
+      if (!decisionRanked.some((existing) => adviceKey(existing) === adviceKey(candidate))) {
+        decisionRanked.push(candidate);
+      }
+    }
+    if (decisionKind === "single" && decisionSelected.length > 1) {
+      decisionKind = "sequence";
+    }
+    if (decisionKind === "sequence") {
+      if (!decisionEvidence) {
+        decisionEvidence = evidence;
+      } else if (!decisionEvidence.includes(evidence)) {
+        decisionEvidence = decisionEvidence + "; " + evidence;
+      }
+    }
+  };
+
+  const finishWithTeardown = async (status: CaseStatus): Promise<CaseResult> => {
+    await runStepsBestEffort(kase.teardown, base, warnings, "teardown");
+    await runStepsBestEffort(config.afterEach, base, warnings, "afterEach");
+    return finish(status);
+  };
+
+  const runAdviceQueue = async (pending: QueuedStep[]): Promise<CaseStatus | null> => {
+    while (pending.length > 0) {
+      // Every queued entry is required. If the queue cannot fit, refuse rather
+      // than execute a prefix and report success from verification.
+      if (recoverySteps.length + pending.length > maxHops) {
+        failureDetail =
+          "Required recovery sequence has " + pending.length + " pending step(s), but only " +
+          String(maxHops - recoverySteps.length) + " hop(s) remain. RecurSpec refuses to run a partial required sequence.";
+        return "RECOVERY_COMMAND_FAILED";
+      }
+      const entry = pending.shift() as QueuedStep;
+      const current = entry.advice;
+      selectedAdvice = current;
+      graph.addNode("advice", "suggested: " + displayCommand(current.command, current.args));
+      const outcome = await executeRecoveryCommand(
+        current.command,
+        current.args,
+        undefined,
+        current,
+        entry.evaluation
+      );
+      if (outcome.result === null) {
+        blockedReason = outcome.blocked;
+        return "BLOCKED_RECOVERY";
+      }
+      const combined = outcome.result.stdout + "\n" + outcome.result.stderr;
+      if (loopDetector.check(current.command, current.args, combined)) {
+        return "RECOVERY_LOOP";
+      }
+      if (outcome.result.timedOut) {
+        return "TIMEOUT";
+      }
+
+      const extractFollowUps = (): { ranked: ExtractedAdvice[]; selected: ReturnType<typeof selectCandidate> } => {
+        const followUps = extractFromStreams(outcome.result.stdout, outcome.result.stderr, {
+          mode: kase.recovery?.extract?.mode ?? "command"
+        });
+        const ranked = rankCandidates(followUps, {
+          prefer: kase.recovery?.prefer ?? ["stderr", "stdout"],
+          originalCommand: kase.run.command
+        });
+        return { ranked, selected: selectCandidate(ranked, { prefer: kase.recovery?.prefer }) };
+      };
+
+      if (outcome.result.exitCode === 0) {
+        const { ranked, selected } = extractFollowUps();
+        if (selected.kind === "sequence") {
+          // FIFO: the new sequence is required, but it must not replace the
+          // remaining required steps that were already queued.
+          const enqueued = enqueueSequence(pending, selected.candidates);
+          if (!enqueued.ok) {
+            if (enqueued.kind === "budget") {
+              failureDetail = enqueued.message;
+              return "RECOVERY_COMMAND_FAILED";
+            }
+            blockedReason = enqueued.reason;
+            return "BLOCKED_RECOVERY";
+          }
+          extendDecisionChain(selected.candidates, ranked, "follow-up advice added a required recovery sequence");
+        } else if (selected.kind === "single" && selected.candidate.confidence >= 0.85) {
+          if (recoverySteps.length + pending.length < maxHops) {
+            pending.push({ advice: selected.candidate });
+            extendDecisionChain([selected.candidate], ranked, "follow-up advice extended the recovery chain");
+          } else {
+            warnings.push(
+              "Follow-up advice " + displayCommand(selected.candidate.command, selected.candidate.args) +
+                " was not run because the hop budget is exhausted."
+            );
+          }
+        }
+        // Alternatives and low-confidence advice never replace the queue or
+        // stop required steps that are still pending.
+        continue;
+      }
+
+      const { ranked, selected } = extractFollowUps();
+      if (selected.kind === "none") {
+        failureDetail = "Recovery step failed and offered no further advice: " + displayCommand(current.command, current.args);
+        return "RECOVERY_COMMAND_FAILED";
+      }
+      if (selected.kind === "ambiguous") {
+        extractedAdvice = selected.candidates;
+        decisionKind = "ambiguous";
+        decisionRanked = selected.candidates;
+        decisionSelected = [];
+        decisionEvidence = selected.evidence;
+        return "AMBIGUOUS_RECOVERY";
+      }
+      // The failed step invalidates the rest of the current required path.
+      pending.length = 0;
+      if (selected.kind === "sequence") {
+        const enqueued = enqueueSequence(pending, selected.candidates);
+        if (!enqueued.ok) {
+          if (enqueued.kind === "budget") {
+            failureDetail = enqueued.message;
+            return "RECOVERY_COMMAND_FAILED";
+          }
+          blockedReason = enqueued.reason;
+          return "BLOCKED_RECOVERY";
+        }
+        extendDecisionChain(selected.candidates, ranked, "failed step offered a required recovery sequence");
+        continue;
+      }
+      if (recoverySteps.length >= maxHops) {
+        failureDetail = "Recovery step failed: " + displayCommand(current.command, current.args);
+        return "RECOVERY_COMMAND_FAILED";
+      }
+      pending.push({ advice: selected.candidate });
+      extendDecisionChain([selected.candidate], ranked, "failed step offered follow-up advice");
+    }
+    return null;
   };
 
   const plan = deriveRecoveryPlan(kase, initial, { originalCommand: kase.run.command });
@@ -298,37 +535,56 @@ export async function runCase(
 
   if (plan.kind === "none") {
     extractedAdvice = plan.all;
-    await runStepsBestEffort(kase.teardown, base, warnings, "teardown");
-    await runStepsBestEffort(config.afterEach, base, warnings, "afterEach");
-    return finish("NO_RECOVERY_ADVICE");
+    decisionKind = "none";
+    decisionRanked = plan.all;
+    decisionEvidence = "no executable recovery advice matched the extracted output";
+    return finishWithTeardown("NO_RECOVERY_ADVICE");
   }
   if (plan.kind === "ambiguous") {
     extractedAdvice = plan.candidates;
-    await runStepsBestEffort(kase.teardown, base, warnings, "teardown");
-    await runStepsBestEffort(config.afterEach, base, warnings, "afterEach");
-    return finish("AMBIGUOUS_RECOVERY");
+    decisionKind = "ambiguous";
+    decisionRanked = plan.candidates;
+    decisionEvidence = plan.evidence;
+    return finishWithTeardown("AMBIGUOUS_RECOVERY");
   }
 
   if (plan.kind === "steps") {
-    for (const step of plan.steps) {
-      if (recoverySteps.length >= maxHops) break;
-      const outcome = await executeRecoveryCommand(step.command, step.args ?? [], step.stdin);
+    decisionKind = "steps";
+    decisionEvidence = "explicit recovery.steps declared by the contract";
+    if (plan.steps.length > maxHops) {
+      failureDetail =
+        "Recovery contract declares " + plan.steps.length + " explicit step(s), but maxHops is " + maxHops +
+        ". RecurSpec refuses to silently truncate the documented recovery path.";
+      return finishWithTeardown("RECOVERY_COMMAND_FAILED");
+    }
+    // Explicit steps are a required path too. Check all of them before running
+    // the first so a predictable block cannot leave a half-applied recovery.
+    const explicitEvaluations = plan.steps.map((step) =>
+      evaluateRecoveryCommand(step.command, step.args ?? [])
+    );
+    const blocked = explicitEvaluations.find((evaluation) => evaluation.verdict === "blocked");
+    if (blocked) {
+      blockedReason = blocked.reason;
+      return finishWithTeardown("BLOCKED_RECOVERY");
+    }
+    for (const [stepIndex, step] of plan.steps.entries()) {
+      const outcome = await executeRecoveryCommand(
+        step.command,
+        step.args ?? [],
+        step.stdin,
+        undefined,
+        explicitEvaluations[stepIndex]
+      );
       if (outcome.result === null) {
         blockedReason = outcome.blocked;
-        await runStepsBestEffort(kase.teardown, base, warnings, "teardown");
-        await runStepsBestEffort(config.afterEach, base, warnings, "afterEach");
-        return finish("BLOCKED_RECOVERY");
+        return finishWithTeardown("BLOCKED_RECOVERY");
       }
       const combined = outcome.result.stdout + "\n" + outcome.result.stderr;
       if (loopDetector.check(step.command, step.args ?? [], combined)) {
-        await runStepsBestEffort(kase.teardown, base, warnings, "teardown");
-        await runStepsBestEffort(config.afterEach, base, warnings, "afterEach");
-        return finish("RECOVERY_LOOP");
+        return finishWithTeardown("RECOVERY_LOOP");
       }
       if (outcome.result.timedOut) {
-        await runStepsBestEffort(kase.teardown, base, warnings, "teardown");
-        await runStepsBestEffort(config.afterEach, base, warnings, "afterEach");
-        return finish("TIMEOUT");
+        return finishWithTeardown("TIMEOUT");
       }
       if (outcome.result.exitCode !== 0) {
         const followUps = extractFromStreams(outcome.result.stdout, outcome.result.stderr, {
@@ -339,113 +595,72 @@ export async function runCase(
           originalCommand: kase.run.command
         });
         const selected = selectCandidate(ranked, { prefer: kase.recovery?.prefer });
-        if (selected.kind === "single" && recoverySteps.length < maxHops) {
-          extractedAdvice = ranked;
-          selectedAdvice = selected.candidate;
-          graph.addNode("advice", "suggested: " + displayCommand(selected.candidate.command, selected.candidate.args));
-          const follow = await executeRecoveryCommand(selected.candidate.command, selected.candidate.args, undefined, selected.candidate);
-          if (follow.result === null) {
-            blockedReason = follow.blocked;
-            await runStepsBestEffort(kase.teardown, base, warnings, "teardown");
-            await runStepsBestEffort(config.afterEach, base, warnings, "afterEach");
-            return finish("BLOCKED_RECOVERY");
-          }
-          if (follow.result.timedOut) {
-            await runStepsBestEffort(kase.teardown, base, warnings, "teardown");
-            await runStepsBestEffort(config.afterEach, base, warnings, "afterEach");
-            return finish("TIMEOUT");
-          }
-          if (follow.result.exitCode !== 0) {
-            failureDetail = "Recovery step failed: " + displayCommand(step.command, step.args ?? []);
-            await runStepsBestEffort(kase.teardown, base, warnings, "teardown");
-            await runStepsBestEffort(config.afterEach, base, warnings, "afterEach");
-            return finish("RECOVERY_COMMAND_FAILED");
-          }
-          continue;
+        if (selected.kind === "ambiguous") {
+          extractedAdvice = selected.candidates;
+          decisionKind = "ambiguous";
+          decisionRanked = selected.candidates;
+          decisionSelected = [];
+          decisionEvidence = selected.evidence;
+          return finishWithTeardown("AMBIGUOUS_RECOVERY");
         }
-        failureDetail = "Recovery step failed: " + displayCommand(step.command, step.args ?? []);
-        await runStepsBestEffort(kase.teardown, base, warnings, "teardown");
-        await runStepsBestEffort(config.afterEach, base, warnings, "afterEach");
-        return finish("RECOVERY_COMMAND_FAILED");
+        if (selected.kind === "none") {
+          failureDetail = "Recovery step failed: " + displayCommand(step.command, step.args ?? []);
+          return finishWithTeardown("RECOVERY_COMMAND_FAILED");
+        }
+        if (selected.kind === "single" && recoverySteps.length >= maxHops) {
+          failureDetail = "Recovery step failed: " + displayCommand(step.command, step.args ?? []);
+          return finishWithTeardown("RECOVERY_COMMAND_FAILED");
+        }
+        extractedAdvice = ranked;
+        selectedAdvice = selected.kind === "single" ? selected.candidate : (selected.candidates[0] ?? null);
+        const pending: QueuedStep[] = [];
+        if (selected.kind === "sequence") {
+          const enqueued = enqueueSequence(pending, selected.candidates);
+          if (!enqueued.ok) {
+            if (enqueued.kind === "budget") {
+              failureDetail = enqueued.message;
+              return finishWithTeardown("RECOVERY_COMMAND_FAILED");
+            }
+            blockedReason = enqueued.reason;
+            return finishWithTeardown("BLOCKED_RECOVERY");
+          }
+        } else {
+          pending.push({ advice: selected.candidate });
+        }
+        const followStatus = await runAdviceQueue(pending);
+        if (followStatus) return finishWithTeardown(followStatus);
+        continue;
       }
     }
     extractedAdvice = [];
     selectedAdvice = null;
+  } else if (plan.kind === "sequence") {
+    extractedAdvice = plan.all;
+    selectedAdvice = plan.candidates[0] ?? null;
+    decisionKind = "sequence";
+    decisionRanked = plan.all;
+    decisionSelected = [...plan.candidates];
+    decisionEvidence = plan.evidence;
+    const pending: QueuedStep[] = [];
+    const enqueued = enqueueSequence(pending, plan.candidates);
+    if (!enqueued.ok) {
+      if (enqueued.kind === "budget") {
+        failureDetail = enqueued.message;
+        return finishWithTeardown("RECOVERY_COMMAND_FAILED");
+      }
+      blockedReason = enqueued.reason;
+      return finishWithTeardown("BLOCKED_RECOVERY");
+    }
+    const sequenceStatus = await runAdviceQueue(pending);
+    if (sequenceStatus) return finishWithTeardown(sequenceStatus);
   } else {
     extractedAdvice = plan.all;
     selectedAdvice = plan.candidate;
-    graph.addNode("advice", "suggested: " + displayCommand(plan.candidate.command, plan.candidate.args));
-    let current: ExtractedAdvice | null = plan.candidate;
-    while (current && recoverySteps.length < maxHops) {
-      const outcome = await executeRecoveryCommand(current.command, current.args, undefined, current);
-      if (outcome.result === null) {
-        blockedReason = outcome.blocked;
-        await runStepsBestEffort(kase.teardown, base, warnings, "teardown");
-        await runStepsBestEffort(config.afterEach, base, warnings, "afterEach");
-        return finish("BLOCKED_RECOVERY");
-      }
-      const combined = outcome.result.stdout + "\n" + outcome.result.stderr;
-      if (loopDetector.check(current.command, current.args, combined)) {
-        await runStepsBestEffort(kase.teardown, base, warnings, "teardown");
-        await runStepsBestEffort(config.afterEach, base, warnings, "afterEach");
-        return finish("RECOVERY_LOOP");
-      }
-      if (outcome.result.timedOut) {
-        await runStepsBestEffort(kase.teardown, base, warnings, "teardown");
-        await runStepsBestEffort(config.afterEach, base, warnings, "afterEach");
-        return finish("TIMEOUT");
-      }
-      if (outcome.result.exitCode === 0) {
-        const chained = extractFromStreams(outcome.result.stdout, outcome.result.stderr, {
-          mode: kase.recovery?.extract?.mode ?? "command"
-        });
-        const chainedRanked = rankCandidates(chained, {
-          prefer: kase.recovery?.prefer ?? ["stderr", "stdout"],
-          originalCommand: kase.run.command
-        });
-        const chainedSelected = selectCandidate(chainedRanked, { prefer: kase.recovery?.prefer });
-        if (
-          chainedSelected.kind === "single" &&
-          chainedSelected.candidate.confidence >= 0.85 &&
-          recoverySteps.length < maxHops
-        ) {
-          current = chainedSelected.candidate;
-          selectedAdvice = current;
-          graph.addNode("advice", "suggested: " + displayCommand(current.command, current.args));
-          continue;
-        }
-        break;
-      }
-      if (recoverySteps.length >= maxHops) {
-        failureDetail = "Recovery step failed: " + displayCommand(current.command, current.args);
-        await runStepsBestEffort(kase.teardown, base, warnings, "teardown");
-        await runStepsBestEffort(config.afterEach, base, warnings, "afterEach");
-        return finish("RECOVERY_COMMAND_FAILED");
-      }
-      const followUps = extractFromStreams(outcome.result.stdout, outcome.result.stderr, {
-        mode: kase.recovery?.extract?.mode ?? "command"
-      });
-      const ranked = rankCandidates(followUps, {
-        prefer: kase.recovery?.prefer ?? ["stderr", "stdout"],
-        originalCommand: kase.run.command
-      });
-      const selected = selectCandidate(ranked, { prefer: kase.recovery?.prefer });
-      if (selected.kind === "none") {
-        failureDetail = "Recovery step failed and offered no further advice: " + displayCommand(current.command, current.args);
-        await runStepsBestEffort(kase.teardown, base, warnings, "teardown");
-        await runStepsBestEffort(config.afterEach, base, warnings, "afterEach");
-        return finish("RECOVERY_COMMAND_FAILED");
-      }
-      if (selected.kind === "ambiguous") {
-        extractedAdvice = selected.candidates;
-        await runStepsBestEffort(kase.teardown, base, warnings, "teardown");
-        await runStepsBestEffort(config.afterEach, base, warnings, "afterEach");
-        return finish("AMBIGUOUS_RECOVERY");
-      }
-      current = selected.candidate;
-      selectedAdvice = current;
-      graph.addNode("advice", "suggested: " + displayCommand(current.command, current.args));
-    }
+    decisionKind = "single";
+    decisionRanked = plan.all;
+    decisionSelected = [plan.candidate];
+    const candidateStatus = await runAdviceQueue([{ advice: plan.candidate }]);
+    if (candidateStatus) return finishWithTeardown(candidateStatus);
   }
 
   const verify = kase.verify ?? { rerunOriginal: true, exitCode: 0 as const };
@@ -492,10 +707,8 @@ export async function runCase(
     }
     const anyFailed = verification.some((v) => !v.ok);
     if (anyFailed) return finish("VERIFY_FAILED");
-    void hops;
     return finish("PASS");
   }
   if (verification.some((v) => !v.ok)) return finish("VERIFY_FAILED");
-  void hops;
   return finish("PASS");
 }

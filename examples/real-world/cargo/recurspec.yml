@@ -1,14 +1,52 @@
-# Real-world cargo example. Tested against cargo 1.85.1; assertions use a
+# Real-world cargo examples. Tested against cargo 1.85.1; assertions use a
 # stable substring only. Everything happens inside the isolated workspace;
 # cargo never touches the network here. See notes.md.
 version: 1
 
 defaults:
   timeout: 120s
+  env:
+    CARGO_NET_OFFLINE: "true"
 
 cases:
   - name: cargo-new-existing
-    description: New into an existing directory suggests init, which initializes the project in place
+    description: New into an existing directory suggests init, which initializes that same project in place
+    # Run inside proj so the advice (`cargo init`, with no path) applies to the
+    # intended directory. Verification proves the project was initialized in
+    # proj and that the workspace root was not initialized by accident.
+    workspace:
+      mkdir: [proj]
+      root: proj
+    run:
+      command: cargo
+      args: [new, .]
+    failure:
+      exitCode: nonzero
+      stderr:
+        contains: "already exists"
+    recovery:
+      source: output
+    verify:
+      mode: goal
+      files:
+        exists:
+          - Cargo.toml
+      commands:
+        - command: cargo
+          args: [metadata, --no-deps, --manifest-path, Cargo.toml]
+        # Regression guard: cargo init must have run inside proj, so the
+        # isolated workspace parent must not contain a Cargo.toml.
+        - command: node
+          args:
+            - -e
+            - "const fs=require('fs'); if (fs.existsSync('../Cargo.toml')) { console.error('parent Cargo.toml exists'); process.exit(1); }"
+
+  - name: cargo-new-parent-existing
+    description: Parent-directory advice omits the target path, so RecurSpec refuses to guess and verification fails honestly
+    # This is an intentional negative: `cargo new proj` from the parent prints
+    # `cargo init`, which initializes the *current* directory (the workspace
+    # root), not proj. The goal check requires proj/Cargo.toml, so the case
+    # reports VERIFY_FAILED instead of falsely passing on root Cargo.toml.
     workspace:
       mkdir: [proj]
     run:
@@ -24,7 +62,8 @@ cases:
       mode: goal
       files:
         exists:
-          - Cargo.toml
+          - proj/Cargo.toml
       commands:
         - command: cargo
-          args: [metadata, --no-deps]
+          args: [metadata, --no-deps, --manifest-path, Cargo.toml]
+          cwd: proj

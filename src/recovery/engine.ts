@@ -7,8 +7,9 @@ import type { StepSpec } from "../types/config.js";
 export type RecoveryPlan =
   | { kind: "steps"; steps: StepSpec[] }
   | { kind: "candidate"; candidate: ExtractedAdvice; all: ExtractedAdvice[] }
+  | { kind: "sequence"; candidates: ExtractedAdvice[]; evidence: string; all: ExtractedAdvice[] }
   | { kind: "none"; all: ExtractedAdvice[] }
-  | { kind: "ambiguous"; candidates: ExtractedAdvice[] };
+  | { kind: "ambiguous"; candidates: ExtractedAdvice[]; evidence?: string };
 
 export interface PlanOptions {
   originalCommand: string;
@@ -34,7 +35,10 @@ export function deriveRecoveryPlan(
       });
       const selected = selectCandidate(ranked, { prefer: recovery.prefer });
       if (selected.kind === "single") return { kind: "candidate", candidate: selected.candidate, all: ranked };
-      if (selected.kind === "ambiguous") return { kind: "ambiguous", candidates: selected.candidates };
+      if (selected.kind === "sequence") {
+        return { kind: "sequence", candidates: selected.candidates, evidence: selected.evidence, all: ranked };
+      }
+      if (selected.kind === "ambiguous") return { kind: "ambiguous", candidates: selected.candidates, evidence: selected.evidence };
       return { kind: "none", all: [] };
     }
     return { kind: "none", all: [] };
@@ -49,7 +53,10 @@ export function deriveRecoveryPlan(
   });
   const selected = selectCandidate(ranked, { prefer: recovery.prefer });
   if (selected.kind === "single") return { kind: "candidate", candidate: selected.candidate, all: ranked };
-  if (selected.kind === "ambiguous") return { kind: "ambiguous", candidates: selected.candidates };
+  if (selected.kind === "sequence") {
+    return { kind: "sequence", candidates: selected.candidates, evidence: selected.evidence, all: ranked };
+  }
+  if (selected.kind === "ambiguous") return { kind: "ambiguous", candidates: selected.candidates, evidence: selected.evidence };
   return { kind: "none", all: ranked };
 }
 
@@ -73,17 +80,22 @@ export function parseStructuredRecovery(stdout: string, stderr: string): Extract
     if (typeof recovery !== "object" || recovery === null) continue;
     const commands = (recovery as { commands?: unknown }).commands;
     if (!Array.isArray(commands)) continue;
+    // Multi-command arrays are ambiguous unless the producer explicitly
+    // declares that declaration order is required. This keeps older payloads
+    // on the safe AMBIGUOUS_RECOVERY path.
+    const ordered = (recovery as { sequence?: unknown }).sequence === true;
+    const entries: ExtractedAdvice[] = [];
     commands.forEach((entry: unknown, idx: number) => {
       if (Array.isArray(entry) && entry.length > 0 && typeof entry[0] === "string") {
         const parts = entry.map(String);
         const cmd = parts[0] as string;
         const args = parts.slice(1);
-        out.push({
+        entries.push({
           command: cmd,
           args,
           raw: cmd + " " + args.join(" "),
           source,
-          line: 1,
+          line: 1 + idx,
           confidence: 1,
           pattern: "structured-json"
         });
@@ -91,7 +103,7 @@ export function parseStructuredRecovery(stdout: string, stderr: string): Extract
         const obj = entry as { command?: unknown; args?: unknown };
         if (typeof obj.command === "string") {
           const args = Array.isArray(obj.args) ? obj.args.map(String) : [];
-          out.push({
+          entries.push({
             command: obj.command,
             args,
             raw: obj.command + " " + args.join(" "),
@@ -103,6 +115,19 @@ export function parseStructuredRecovery(stdout: string, stderr: string): Extract
         }
       }
     });
+    if (ordered && entries.length > 1) {
+      const id = source + "-structured-sequence";
+      entries.forEach((entry, index) => {
+        entry.group = {
+          id,
+          relation: "sequence",
+          evidence: 'structured recovery.commands declares "sequence": true',
+          index,
+          size: entries.length
+        };
+      });
+    }
+    out.push(...entries);
   }
   return out;
 }

@@ -3,6 +3,7 @@
   "requiredBinaries": ["cargo"],
   "config": "recurspec.yml",
   "expected": {
-    "cargo-new-existing": "PASS"
+    "cargo-new-existing": "PASS",
+    "cargo-new-parent-existing": "VERIFY_FAILED"
   }
 }

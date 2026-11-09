@@ -1,9 +1,10 @@
-import { access, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { access, mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { acmeArgs, baseConfig, repoRoot, runSingleCase } from "../helpers/acme.js";
 import { runCase } from "../../src/runner/runner.js";
+import { runStep } from "../../src/runner/process.js";
 
 async function fileExists(p: string): Promise<boolean> {
   try {
@@ -25,6 +26,69 @@ describe("workspace, timeouts, verification, and hooks", () => {
       verify: { rerunOriginal: true, exitCode: 0 }
     });
     expect(result.status).toBe("TIMEOUT");
+  });
+
+  it("resolves a relative run.cwd inside the isolated workspace", async () => {
+    const result = await runSingleCase({
+      name: "relative-cwd",
+      workspace: { write: { "sub/where.mjs": "console.log(process.cwd())\n" } },
+      run: { command: process.execPath, args: ["where.mjs"], cwd: "sub" },
+      failure: { exitCode: 0 },
+      recovery: { source: "output" }
+    });
+    expect(result.status).toBe("NO_RECOVERY_ADVICE");
+    const cwd = result.initialFailure?.cwd ?? "";
+    expect(path.isAbsolute(cwd)).toBe(true);
+    expect(path.basename(cwd)).toBe("sub");
+  });
+
+  it("refuses a relative run.cwd that escapes the isolated workspace", async () => {
+    const result = await runSingleCase({
+      name: "cwd-traversal",
+      workspace: { write: { "where.mjs": "console.log(process.cwd())\n" } },
+      run: { command: process.execPath, args: ["where.mjs"], cwd: "../.." }
+    });
+    expect(result.status).toBe("INTERNAL_ERROR");
+    expect(result.error ?? "").toMatch(/outside the workspace/);
+  });
+
+  it("keeps absolute run.cwd behavior for cases and hooks", async () => {
+    const outside = await mkdtemp(path.join(tmpdir(), "rs-absolute-"));
+    try {
+      await writeFile(path.join(outside, "where.mjs"), "console.log(process.cwd())\n", "utf8");
+      const result = await runSingleCase({
+        name: "absolute-cwd",
+        run: { command: process.execPath, args: [path.join(outside, "where.mjs")], cwd: outside },
+        failure: { exitCode: 0 }
+      });
+      expect(result.status).toBe("NO_RECOVERY_ADVICE");
+      expect(result.initialFailure?.cwd).toBe(outside);
+    } finally {
+      await rm(outside, { recursive: true, force: true });
+    }
+  });
+
+  it("refuses a relative run.cwd that resolves through a symlink outside the workspace", async (ctx) => {
+    const root = await mkdtemp(path.join(tmpdir(), "rs-symlink-root-"));
+    const outside = await mkdtemp(path.join(tmpdir(), "rs-symlink-out-"));
+    try {
+      try {
+        // Junctions work on Windows without elevation; on POSIX the type is ignored.
+        await symlink(outside, path.join(root, "link"), "junction");
+      } catch {
+        ctx.skip();
+        return;
+      }
+      await expect(
+        runStep(
+          { command: process.execPath, args: ["-e", "0"], cwd: "link" },
+          { cwd: root, defaultTimeoutMs: 5000 }
+        )
+      ).rejects.toThrow(/outside the workspace/);
+    } finally {
+      await rm(root, { recursive: true, force: true });
+      await rm(outside, { recursive: true, force: true });
+    }
   });
 
   it("never modifies the source directory", async () => {

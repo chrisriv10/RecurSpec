@@ -1,5 +1,20 @@
 import { describe, expect, it } from "vitest";
 import { acmeArgs, runSingleCase } from "../helpers/acme.js";
+import type { RecoveryCase } from "../../src/types/config.js";
+import type { CaseResult } from "../../src/types/result.js";
+
+const BT = String.fromCharCode(96);
+
+function fakeCase(script: string, overrides: Partial<RecoveryCase> & { name: string }): Promise<CaseResult> {
+  return runSingleCase({
+    workspace: { write: { "fake.mjs": script } },
+    run: { command: process.execPath, args: ["fake.mjs", "original"] },
+    failure: { exitCode: "nonzero" },
+    recovery: { source: "output", maxHops: 4 },
+    verify: { rerunOriginal: true, exitCode: 0 },
+    ...overrides
+  });
+}
 
 describe("recovery flows against the acme fixture", () => {
   it("passes a valid one-hop recovery", async () => {
@@ -14,6 +29,41 @@ describe("recovery flows against the acme fixture", () => {
     expect(result.status).toBe("PASS");
     expect(result.hops).toBe(1);
     expect(result.failureMatched).toBe(true);
+  });
+
+  it("runs a required multi-command sequence in order", async () => {
+    const result = await runSingleCase({
+      name: "sequence",
+      env: { ACME_SCENARIO: "sequence" },
+      workspace: { copy: ["demo/acme-cli/**"] },
+      run: { command: process.execPath, args: acmeArgs("deploy") },
+      failure: { exitCode: "nonzero", stderr: { contains: "Missing account configuration" } },
+      recovery: { source: "output", maxHops: 3 },
+      verify: { rerunOriginal: true, exitCode: 0 }
+    });
+    expect(result.status).toBe("PASS");
+    expect(result.hops).toBe(2);
+    const executed = result.recoverySteps.map((step) => step.args.join(" "));
+    expect(executed).toHaveLength(2);
+    expect(executed[0]).toContain("--set email");
+    expect(executed[1]).toContain("--set name");
+    expect(result.decision?.kind).toBe("sequence");
+    expect(result.decision?.candidates.every((candidate) => candidate.selected)).toBe(true);
+  });
+
+  it("refuses to run a partial required sequence when the hop budget is too small", async () => {
+    const result = await runSingleCase({
+      name: "sequence-budget",
+      env: { ACME_SCENARIO: "sequence" },
+      workspace: { copy: ["demo/acme-cli/**"] },
+      run: { command: process.execPath, args: acmeArgs("deploy") },
+      failure: { exitCode: "nonzero" },
+      recovery: { source: "output", maxHops: 1 },
+      verify: { rerunOriginal: true, exitCode: 0 }
+    });
+    expect(result.status).toBe("RECOVERY_COMMAND_FAILED");
+    expect(result.recoverySteps).toHaveLength(0);
+    expect(result.failureDetail ?? "").toContain("refuses to run a partial required sequence");
   });
 
   it("follows a two-step recovery chain", async () => {
@@ -119,6 +169,23 @@ describe("recovery flows against the acme fixture", () => {
     });
     expect(result.status).toBe("AMBIGUOUS_RECOVERY");
     expect(result.recoverySteps).toHaveLength(0);
+    expect(result.decision?.kind).toBe("ambiguous");
+  });
+
+  it("does not execute an alternative even when one option ranks higher", async () => {
+    const result = await runSingleCase({
+      name: "ambiguous-confidence",
+      env: { ACME_SCENARIO: "ambiguous-confidence" },
+      workspace: { copy: ["demo/acme-cli/**"] },
+      run: { command: process.execPath, args: acmeArgs("deploy") },
+      failure: { exitCode: "nonzero" },
+      recovery: { source: "output" },
+      verify: { rerunOriginal: true, exitCode: 0 }
+    });
+    expect(result.status).toBe("AMBIGUOUS_RECOVERY");
+    expect(result.recoverySteps).toHaveLength(0);
+    expect(result.decision?.evidence ?? "").toContain("or");
+    expect(result.decision?.candidates.every((candidate) => !candidate.selected)).toBe(true);
   });
 
   it("blocks unsafe suggested commands", async () => {
@@ -169,5 +236,166 @@ describe("recovery flows against the acme fixture", () => {
       verify: { rerunOriginal: true, exitCode: 0 }
     });
     expect(result.status).toBe("FAILURE_MISMATCH");
+  });
+});
+
+describe("required recovery sequence execution", () => {
+  it("keeps running the queue when a chained step succeeds silently", async () => {
+    const script =
+      'import fs from "node:fs";\n' +
+      'const mode = process.argv[2];\n' +
+      'if (mode === "original") {\n' +
+      '  if (fs.existsSync("b.txt")) process.exit(0);\n' +
+      '  process.stderr.write("Fix: Run ' + BT + 'node fake.mjs bootstrap' + BT + '\\n");\n' +
+      "  process.exit(1);\n" +
+      "}\n" +
+      'if (mode === "bootstrap") {\n' +
+      '  process.stdout.write("Run ' + BT + 'node fake.mjs a' + BT + ' then ' + BT + 'node fake.mjs b' + BT + '\\n");\n' +
+      "  process.exit(0);\n" +
+      "}\n" +
+      'if (mode === "a" || mode === "b") {\n' +
+      '  fs.writeFileSync(mode + ".txt", "x");\n' +
+      "  process.exit(0);\n" +
+      "}\n" +
+      "process.exit(2);\n";
+    const result = await fakeCase(script, { name: "silent-chain" });
+    expect(result.status).toBe("PASS");
+    expect(result.recoverySteps.map((step) => step.args[1])).toEqual(["bootstrap", "a", "b"]);
+    expect(result.hops).toBe(3);
+    const selected = result.decision?.candidates.filter((candidate) => candidate.selected) ?? [];
+    expect(selected.map((candidate) => candidate.reason.match(/step (\d+) of (\d+)/)?.slice(1).join("/"))).toEqual([
+      "1/3",
+      "2/3",
+      "3/3"
+    ]);
+  });
+
+  it("appends a nested required sequence after the pending steps", async () => {
+    const script =
+      'import fs from "node:fs";\n' +
+      'const mode = process.argv[2];\n' +
+      "const done = ['s1', 's2', 'n1', 'n2'].every((name) => fs.existsSync(name + '.txt'));\n" +
+      'if (mode === "original") {\n' +
+      "  if (done) process.exit(0);\n" +
+      '  process.stderr.write("Fix: Run ' + BT + 'node fake.mjs s1' + BT + ' then ' + BT + 'node fake.mjs s2' + BT + '\\n");\n' +
+      "  process.exit(1);\n" +
+      "}\n" +
+      'if (mode === "s1") {\n' +
+      '  process.stdout.write("Then run ' + BT + 'node fake.mjs n1' + BT + ' then ' + BT + 'node fake.mjs n2' + BT + '\\n");\n' +
+      '  fs.writeFileSync("s1.txt", "x");\n' +
+      "  process.exit(0);\n" +
+      "}\n" +
+      'if (mode === "s2" || mode === "n1" || mode === "n2") {\n' +
+      '  fs.writeFileSync(mode + ".txt", "x");\n' +
+      "  process.exit(0);\n" +
+      "}\n" +
+      "process.exit(2);\n";
+    const result = await fakeCase(script, { name: "nested-chain" });
+    expect(result.status).toBe("PASS");
+    expect(result.recoverySteps.map((step) => step.args[1])).toEqual(["s1", "s2", "n1", "n2"]);
+    expect(result.hops).toBe(4);
+  });
+
+  it("fails instead of passing when a chained sequence exceeds the remaining budget", async () => {
+    const script =
+      'import fs from "node:fs";\n' +
+      'const mode = process.argv[2];\n' +
+      'if (mode === "original") {\n' +
+      '  if (fs.existsSync("bootstrap.txt")) process.exit(0);\n' +
+      '  process.stderr.write("Fix: Run ' + BT + 'node fake.mjs bootstrap' + BT + '\\n");\n' +
+      "  process.exit(1);\n" +
+      "}\n" +
+      'if (mode === "bootstrap") {\n' +
+      '  fs.writeFileSync("bootstrap.txt", "x");\n' +
+      '  process.stdout.write("Run ' + BT + 'node fake.mjs a' + BT + ' then ' + BT + 'node fake.mjs b' + BT + '\\n");\n' +
+      "  process.exit(0);\n" +
+      "}\n" +
+      'if (mode === "a" || mode === "b") process.exit(0);\n' +
+      "process.exit(2);\n";
+    const result = await fakeCase(script, {
+      name: "chained-over-budget",
+      recovery: { source: "output", maxHops: 2 }
+    });
+    expect(result.status).toBe("RECOVERY_COMMAND_FAILED");
+    expect(result.hops).toBe(1);
+    expect(result.failureDetail ?? "").toContain("refuses to run a partial required sequence");
+    expect(result.verification).toHaveLength(0);
+  });
+
+  it("preflights an initial required sequence before executing its first member", async () => {
+    const script =
+      'const mode = process.argv[2];\n' +
+      'if (mode === "original") {\n' +
+      '  process.stderr.write("Fix: Run ' + BT + 'node fake.mjs ok' + BT + ' then ' + BT + 'sudo rm -rf /' + BT + '\\n");\n' +
+      "  process.exit(1);\n" +
+      "}\n" +
+      "process.exit(0);\n";
+    const result = await fakeCase(script, { name: "initial-safety-preflight" });
+    expect(result.status).toBe("BLOCKED_RECOVERY");
+    expect(result.recoverySteps).toHaveLength(0);
+    expect(result.blockedReason ?? "").toMatch(/sudo|dangerous|Blocked/i);
+  });
+
+  it("preflights a chained required sequence before executing its first member", async () => {
+    const script =
+      'import fs from "node:fs";\n' +
+      'const mode = process.argv[2];\n' +
+      'if (mode === "original") {\n' +
+      '  if (fs.existsSync("bootstrap.txt")) process.exit(0);\n' +
+      '  process.stderr.write("Fix: Run ' + BT + 'node fake.mjs bootstrap' + BT + '\\n");\n' +
+      "  process.exit(1);\n" +
+      "}\n" +
+      'if (mode === "bootstrap") {\n' +
+      '  fs.writeFileSync("bootstrap.txt", "x");\n' +
+      '  process.stdout.write("Then run ' + BT + 'node fake.mjs ok' + BT + ' then ' + BT + 'sudo rm -rf /' + BT + '\\n");\n' +
+      "  process.exit(0);\n" +
+      "}\n" +
+      "process.exit(0);\n";
+    const result = await fakeCase(script, { name: "chained-safety-preflight" });
+    expect(result.status).toBe("BLOCKED_RECOVERY");
+    expect(result.recoverySteps.map((step) => step.args[1])).toEqual(["bootstrap"]);
+    expect(result.blockedReason ?? "").toMatch(/sudo|dangerous|Blocked/i);
+  });
+
+  it("refuses to truncate explicit recovery steps to maxHops", async () => {
+    const script =
+      'const mode = process.argv[2];\n' +
+      'if (mode === "original") process.exit(1);\n' +
+      "process.exit(0);\n";
+    const result = await fakeCase(script, {
+      name: "explicit-over-budget",
+      recovery: {
+        maxHops: 1,
+        steps: [
+          { command: process.execPath, args: ["fake.mjs", "s1"] },
+          { command: process.execPath, args: ["fake.mjs", "s2"] }
+        ]
+      },
+      verify: { rerunOriginal: true, exitCode: 0 }
+    });
+    expect(result.status).toBe("RECOVERY_COMMAND_FAILED");
+    expect(result.recoverySteps).toHaveLength(0);
+    expect(result.failureDetail ?? "").toContain("silently truncate");
+  });
+
+  it("preflights explicit recovery steps before executing the first one", async () => {
+    const script =
+      'const mode = process.argv[2];\n' +
+      'if (mode === "original") process.exit(1);\n' +
+      "process.exit(0);\n";
+    const result = await fakeCase(script, {
+      name: "explicit-safety-preflight",
+      recovery: {
+        maxHops: 3,
+        steps: [
+          { command: process.execPath, args: ["fake.mjs", "ok"] },
+          { command: "sudo", args: ["rm", "-rf", "/"] }
+        ]
+      },
+      verify: { rerunOriginal: true, exitCode: 0 }
+    });
+    expect(result.status).toBe("BLOCKED_RECOVERY");
+    expect(result.recoverySteps).toHaveLength(0);
+    expect(result.blockedReason ?? "").toMatch(/sudo|dangerous|Blocked/i);
   });
 });

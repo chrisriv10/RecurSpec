@@ -33,6 +33,26 @@ A case never collapses to a bare boolean internally. The possible states are:
 - `INTERACTIVE_RECOVERY_UNSUPPORTED` - the tool seems to need a TTY without scripted stdin.
 - `INTERNAL_ERROR` - setup or infrastructure failed.
 
+## Sequences are not alternatives
+
+A diagnostic can prescribe more than one command. RecurSpec distinguishes:
+
+- **Required sequence** - every command is needed, in order. Example: Git's
+  missing identity asks for `user.email` and `user.name`; both must be set.
+  The whole sequence is safety-checked and executed, and none of a sequence
+  runs if `maxHops` cannot fit every remaining step. Preflight is not a
+  transaction: commands that already ran are not rolled back.
+- **Alternatives** - the commands are mutually exclusive. Example: Git's
+  divergent-pull hint offers `pull.rebase false`, `pull.rebase true`, and
+  `pull.ff only`. Choosing one would be a guess, so the case is
+  `AMBIGUOUS_RECOVERY` and nothing is executed.
+
+The distinction is evidence-based (a bare label plus complementary setting
+commands, or an inline `then`); ambiguous wording never authorizes execution.
+Required follow-up sequences found in later output are appended after pending
+steps rather than replacing them. See
+[recovery extraction](recovery-extraction.md).
+
 ## Recovery rate honesty
 
 The summary recovery rate is computed over cases that reached a valid failure state only.

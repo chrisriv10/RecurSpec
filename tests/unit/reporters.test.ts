@@ -74,11 +74,65 @@ describe("reporters", () => {
       extractedAdvice: [
         { command: "git", args: ["checkout", "main"], raw: "git checkout main", source: "stderr", line: 2, confidence: 0.8, pattern: "hint-colon" },
         { command: "git", args: ["switch", "main"], raw: "git switch main", source: "stderr", line: 3, confidence: 0.8, pattern: "hint-colon" }
-      ]
+      ],
+      decision: {
+        kind: "ambiguous",
+        evidence: "three exclusive options",
+        candidates: []
+      }
     });
     const md = renderMarkdown(buildRunResult([ambiguous], []));
     expect(md).toContain("| ❌ | ambiguous-case |");
     expect(md).toContain("AMBIGUOUS_RECOVERY after 'acme sync': 'git checkout main', 'git switch main'");
+    expect(md).toContain("three exclusive options");
+  });
+
+  it("junit failures include completion mode, recovery chain, and decision evidence", () => {
+    const failedSequence = stubCase({
+      name: "sequence-case",
+      status: "RECOVERY_COMMAND_FAILED",
+      originalCommand: "git commit -m test",
+      completion: { mode: "retry", verified: false },
+      recoverySteps: [
+        {
+          command: "git",
+          args: ["config", "user.email", "a@b.c"],
+          exitCode: 0,
+          stdout: "",
+          stderr: "",
+          durationMs: 1,
+          timedOut: false,
+          cwd: "/tmp/x"
+        }
+      ],
+      decision: {
+        kind: "sequence",
+        evidence: "commands listed after a bare Run label",
+        candidates: [
+          {
+            command: "git",
+            args: ["config", "user.name", "A"],
+            source: "stderr",
+            line: 8,
+            pattern: "run-continuation",
+            confidence: 0.8,
+            rank: 2,
+            selected: false,
+            reason: "confidence 0.80. not executed: sequence failed"
+          }
+        ]
+      }
+    });
+    const xml = renderJUnit(buildRunResult([failedSequence], []));
+    expect(xml).toContain("Completion: retry (verified: false)");
+    expect(xml).toContain("Recovery chain: git commit -m test -&gt; git config user.email a@b.c");
+    expect(xml).toContain("Recovery decision: sequence - commands listed after a bare Run label");
+    expect(xml).toContain("Candidate rejected: git config user.name A");
+
+    const text = renderTerminal(buildRunResult([failedSequence], []), { version: "0.1.0", verbose: true });
+    expect(text).toContain("evidence: commands listed after a bare Run label");
+    expect(text).toContain("2. git config user.name A");
+    expect(text).toContain("ranking: confidence 0.80");
   });
 
   it("terminal output groups failures with status", () => {

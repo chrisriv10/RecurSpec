@@ -25,6 +25,8 @@ jobs:
       - run: pnpm build
       - name: Packed-install smoke test
         run: pnpm smoke
+      - name: Real-world compatibility suite
+        run: pnpm test:real-world -- --require-all
       - name: Passing self-test (JUnit artifact)
         run: node dist/cli.js test ci/recurspec.ci.yml --format junit > junit.xml
       - name: Showcase verification (expected failure)

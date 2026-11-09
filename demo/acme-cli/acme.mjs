@@ -79,12 +79,36 @@ switch (command) {
     fail("Configure needs a session. Run `" + SELF + " login` first.");
     break;
   }
+  case "config": {
+    // Complementary account settings used by the ordered-sequence scenario.
+    const setIndex = rest.indexOf("--set");
+    if (setIndex < 0 || rest.length < setIndex + 3) fail("Usage: acme config --set <key> <value>.");
+    const key = rest[setIndex + 1];
+    const value = rest[setIndex + 2];
+    if (!/^(email|name)$/.test(key)) fail("Unknown config key: " + key + ".");
+    writeState(path.join(".acme", "config", key), value + "\n");
+    ok("Set " + key + ".");
+    break;
+  }
   case "select-org": {
     writeState(".acme/org-selected", "acme-corp\n");
     ok("Organization selected.");
     break;
   }
   case "deploy": {
+    if (scenario === "sequence") {
+      if (!hasFile(".acme/config/email") || !hasFile(".acme/config/name")) {
+        fail(
+          "Missing account configuration.\n\n" +
+            "Run\n\n" +
+            "  " + SELF + " config --set email dev@example.com\n" +
+            '  ' + SELF + ' config --set name "Dev User"\n\n' +
+            "then deploy again."
+        );
+      }
+      ok("Deployed successfully.");
+      break;
+    }
     if (scenario === "two-step") {
       if (!hasFile(".acme/logged-in")) fail("Authentication required. Run `" + SELF + " login`.");
       if (!hasFile(".acme/org-selected")) fail("No organization selected. Run `" + SELF + " select-org`.");
@@ -101,6 +125,12 @@ switch (command) {
     }
     if (scenario === "ambiguous") {
       fail("Could not deploy. Run `" + SELF + " init` or run `" + SELF + " login`.");
+      break;
+    }
+    if (scenario === "ambiguous-confidence") {
+      // The first command extracts with higher confidence (run-backticks vs
+      // inline-backticks). The explicit "or" still makes them alternatives.
+      fail("Could not deploy. Run `" + SELF + " init` or `" + SELF + " login`.");
       break;
     }
     if (scenario === "unsafe") {

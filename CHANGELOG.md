@@ -1,5 +1,66 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- Ordered multi-command recovery for diagnostics that prescribe a required
+  sequence: a bare `Run`/`Try`/`Execute` label with complementary setting
+  commands sharing one executable, an inline `then` connector, or a structured
+  JSON `recovery.commands` array marked with `"sequence": true`. Every step is
+  safety checked and counted against `maxHops`. The whole sequence is
+  preflighted before its first member runs, and an insufficient hop budget
+  refuses the remaining sequence instead of running a partial one. Required
+  follow-ups are appended FIFO after pending steps.
+- Structured recovery is backward compatible: without `"sequence": true`, a
+  multi-command array remains `AMBIGUOUS_RECOVERY`. Declaration order is
+  authoritative for both tuple and object commands; ranking never reorders
+  execution.
+- Conservative alternative detection (`one of`, `either`, `or`, `optionally`,
+  inline `or` under a bare label, trailing per-option annotations, mixed
+  executables, final-value-only differences, and non-setting commands such as
+  `docker build` or `git remote add`). These remain `AMBIGUOUS_RECOVERY` and
+  execute nothing.
+- Additive recovery diagnostics: optional `decision`
+  (`none`/`single`/`sequence`/`steps`/`ambiguous`, evidence, ranked candidates
+  with selection/rejection reasons) and per-candidate `group` metadata.
+  JSON exposes both; `--verbose` terminal output explains ranking; JUnit
+  failures include completion mode, the executed recovery chain, decision
+  evidence, and rejected candidates; Markdown ambiguous cells include evidence.
+- Real-world suite now prints tool versions, reports skips with reasons, fails
+  when an expected case is missing, counts expected negatives separately, and
+  supports `--require-all`. CI runs it with `--require-all`, so missing tool
+  binaries are failures rather than silent skips. Malformed JSON reports and
+  CLI error envelopes are reported cleanly instead of crashing the harness.
+
+### Fixed
+
+- Fenced recovery commands now report the real diagnostic line (the line after
+  the opening fence), and CRLF output is normalized before extraction.
+  Multiple commands on one line are ordered by their textual column, so
+  `Try A then run B` no longer executes in reverse.
+- Inline `or`/`either` connectors now override a surrounding bare `Run` label,
+  and fenced label blocks are grouped without counting fence delimiters.
+- Complementary sequence detection is limited to setting-like commands and
+  recognizes interpreter-prefixed forms (`node tool.mjs config --set ...`),
+  rejecting docker-build and git-remote false positives.
+- Cargo real-world false positive: the `cargo new`/`cargo init` fixture no
+  longer passes by initializing the workspace root. The advice runs inside the
+  intended project, and goal verification checks `proj/Cargo.toml`,
+  `cargo metadata --no-deps --manifest-path Cargo.toml`, and that the parent
+  stays uninitialized. A parent-directory fixture documents the honest
+  `VERIFY_FAILED` limitation when the advice omits the target path.
+- Relative step `cwd` is now resolved against the case workspace (or
+  `workspace.root`), never against the RecurSpec process cwd. Relative paths
+  that traverse outside it, or that resolve through an outside symlink, are
+  refused; absolute paths are unchanged.
+- Verbose terminal output now shows safety verdicts even when decision
+  candidates are present, so a blocked command is never displayed without the
+  reason it was blocked.
+- Explicit `recovery.steps` are safety-preflighted and fail rather than being
+  silently truncated when they exceed `maxHops`.
+- `Run one of ...`-style prose no longer yields a phantom `one` candidate.
+
 ## 0.2.0
 
 ### Added

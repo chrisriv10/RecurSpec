@@ -1072,14 +1072,14 @@ var require_util = __commonJS({
         }
         const port = url.port != null ? url.port : url.protocol === "https:" ? 443 : 80;
         let origin = url.origin != null ? url.origin : `${url.protocol || ""}//${url.hostname || ""}:${port}`;
-        let path12 = url.path != null ? url.path : `${url.pathname || ""}${url.search || ""}`;
+        let path13 = url.path != null ? url.path : `${url.pathname || ""}${url.search || ""}`;
         if (origin[origin.length - 1] === "/") {
           origin = origin.slice(0, origin.length - 1);
         }
-        if (path12 && path12[0] !== "/") {
-          path12 = `/${path12}`;
+        if (path13 && path13[0] !== "/") {
+          path13 = `/${path13}`;
         }
-        return new URL(`${origin}${path12}`);
+        return new URL(`${origin}${path13}`);
       }
       if (!isHttpOrHttpsPrefixed(url.origin || url.protocol)) {
         throw new InvalidArgumentError("Invalid URL protocol: the URL must start with `http:` or `https:`.");
@@ -1530,39 +1530,39 @@ var require_diagnostics = __commonJS({
       });
       diagnosticsChannel.channel("undici:client:sendHeaders").subscribe((evt) => {
         const {
-          request: { method, path: path12, origin }
+          request: { method, path: path13, origin }
         } = evt;
-        debuglog2("sending request to %s %s/%s", method, origin, path12);
+        debuglog2("sending request to %s %s/%s", method, origin, path13);
       });
       diagnosticsChannel.channel("undici:request:headers").subscribe((evt) => {
         const {
-          request: { method, path: path12, origin },
+          request: { method, path: path13, origin },
           response: { statusCode }
         } = evt;
         debuglog2(
           "received response to %s %s/%s - HTTP %d",
           method,
           origin,
-          path12,
+          path13,
           statusCode
         );
       });
       diagnosticsChannel.channel("undici:request:trailers").subscribe((evt) => {
         const {
-          request: { method, path: path12, origin }
+          request: { method, path: path13, origin }
         } = evt;
-        debuglog2("trailers received from %s %s/%s", method, origin, path12);
+        debuglog2("trailers received from %s %s/%s", method, origin, path13);
       });
       diagnosticsChannel.channel("undici:request:error").subscribe((evt) => {
         const {
-          request: { method, path: path12, origin },
+          request: { method, path: path13, origin },
           error: error2
         } = evt;
         debuglog2(
           "request to %s %s/%s errored - %s",
           method,
           origin,
-          path12,
+          path13,
           error2.message
         );
       });
@@ -1611,9 +1611,9 @@ var require_diagnostics = __commonJS({
         });
         diagnosticsChannel.channel("undici:client:sendHeaders").subscribe((evt) => {
           const {
-            request: { method, path: path12, origin }
+            request: { method, path: path13, origin }
           } = evt;
-          debuglog2("sending request to %s %s/%s", method, origin, path12);
+          debuglog2("sending request to %s %s/%s", method, origin, path13);
         });
       }
       diagnosticsChannel.channel("undici:websocket:open").subscribe((evt) => {
@@ -1676,7 +1676,7 @@ var require_request = __commonJS({
     var kHandler = /* @__PURE__ */ Symbol("handler");
     var Request = class {
       constructor(origin, {
-        path: path12,
+        path: path13,
         method,
         body,
         headers,
@@ -1691,11 +1691,11 @@ var require_request = __commonJS({
         expectContinue,
         servername
       }, handler) {
-        if (typeof path12 !== "string") {
+        if (typeof path13 !== "string") {
           throw new InvalidArgumentError("path must be a string");
-        } else if (path12[0] !== "/" && !(path12.startsWith("http://") || path12.startsWith("https://")) && method !== "CONNECT") {
+        } else if (path13[0] !== "/" && !(path13.startsWith("http://") || path13.startsWith("https://")) && method !== "CONNECT") {
           throw new InvalidArgumentError("path must be an absolute URL or start with a slash");
-        } else if (invalidPathRegex.test(path12)) {
+        } else if (invalidPathRegex.test(path13)) {
           throw new InvalidArgumentError("invalid request path");
         }
         if (typeof method !== "string") {
@@ -1761,7 +1761,7 @@ var require_request = __commonJS({
         this.completed = false;
         this.aborted = false;
         this.upgrade = upgrade || null;
-        this.path = query ? buildURL(path12, query) : path12;
+        this.path = query ? buildURL(path13, query) : path13;
         this.origin = origin;
         this.idempotent = idempotent == null ? method === "HEAD" || method === "GET" : idempotent;
         this.blocking = blocking == null ? false : blocking;
@@ -6390,7 +6390,7 @@ var require_client_h1 = __commonJS({
       return method !== "GET" && method !== "HEAD" && method !== "OPTIONS" && method !== "TRACE" && method !== "CONNECT";
     }
     function writeH1(client, request) {
-      const { method, path: path12, host, upgrade, blocking, reset: reset2 } = request;
+      const { method, path: path13, host, upgrade, blocking, reset: reset2 } = request;
       let { body, headers, contentLength } = request;
       const expectsPayload = method === "PUT" || method === "POST" || method === "PATCH" || method === "QUERY" || method === "PROPFIND" || method === "PROPPATCH";
       if (util2.isFormDataLike(body)) {
@@ -6465,7 +6465,7 @@ var require_client_h1 = __commonJS({
       if (blocking) {
         socket[kBlocking] = true;
       }
-      let header = `${method} ${path12} HTTP/1.1\r
+      let header = `${method} ${path13} HTTP/1.1\r
 `;
       if (typeof host === "string") {
         header += `host: ${host}\r
@@ -6991,7 +6991,7 @@ var require_client_h2 = __commonJS({
     }
     function writeH2(client, request) {
       const session = client[kHTTP2Session];
-      const { method, path: path12, host, upgrade, expectContinue, signal, headers: reqHeaders } = request;
+      const { method, path: path13, host, upgrade, expectContinue, signal, headers: reqHeaders } = request;
       let { body } = request;
       if (upgrade) {
         util2.errorRequest(client, request, new Error("Upgrade not supported for H2"));
@@ -7058,7 +7058,7 @@ var require_client_h2 = __commonJS({
         });
         return true;
       }
-      headers[HTTP2_HEADER_PATH] = path12;
+      headers[HTTP2_HEADER_PATH] = path13;
       headers[HTTP2_HEADER_SCHEME] = "https";
       const expectsPayload = method === "PUT" || method === "POST" || method === "PATCH";
       if (body && typeof body.read === "function") {
@@ -7411,9 +7411,9 @@ var require_redirect_handler = __commonJS({
           return this.handler.onHeaders(statusCode, headers, resume, statusText);
         }
         const { origin, pathname, search } = util2.parseURL(new URL(this.location, this.opts.origin && new URL(this.opts.path, this.opts.origin)));
-        const path12 = search ? `${pathname}${search}` : pathname;
+        const path13 = search ? `${pathname}${search}` : pathname;
         this.opts.headers = cleanRequestHeaders(this.opts.headers, statusCode === 303, this.opts.origin !== origin);
-        this.opts.path = path12;
+        this.opts.path = path13;
         this.opts.origin = origin;
         this.opts.maxRedirections = 0;
         this.opts.query = null;
@@ -8648,10 +8648,10 @@ var require_proxy_agent = __commonJS({
         };
         const {
           origin,
-          path: path12 = "/",
+          path: path13 = "/",
           headers = {}
         } = opts;
-        opts.path = origin + path12;
+        opts.path = origin + path13;
         if (!("host" in headers) && !("Host" in headers)) {
           const { host } = new URL2(origin);
           headers.host = host;
@@ -10623,20 +10623,20 @@ var require_mock_utils = __commonJS({
       }
       return true;
     }
-    function safeUrl(path12) {
-      if (typeof path12 !== "string") {
-        return path12;
+    function safeUrl(path13) {
+      if (typeof path13 !== "string") {
+        return path13;
       }
-      const pathSegments = path12.split("?");
+      const pathSegments = path13.split("?");
       if (pathSegments.length !== 2) {
-        return path12;
+        return path13;
       }
       const qp = new URLSearchParams(pathSegments.pop());
       qp.sort();
       return [...pathSegments, qp.toString()].join("?");
     }
-    function matchKey(mockDispatch2, { path: path12, method, body, headers }) {
-      const pathMatch = matchValue(mockDispatch2.path, path12);
+    function matchKey(mockDispatch2, { path: path13, method, body, headers }) {
+      const pathMatch = matchValue(mockDispatch2.path, path13);
       const methodMatch = matchValue(mockDispatch2.method, method);
       const bodyMatch = typeof mockDispatch2.body !== "undefined" ? matchValue(mockDispatch2.body, body) : true;
       const headersMatch = matchHeaders(mockDispatch2, headers);
@@ -10658,7 +10658,7 @@ var require_mock_utils = __commonJS({
     function getMockDispatch(mockDispatches, key) {
       const basePath = key.query ? buildURL(key.path, key.query) : key.path;
       const resolvedPath = typeof basePath === "string" ? safeUrl(basePath) : basePath;
-      let matchedMockDispatches = mockDispatches.filter(({ consumed }) => !consumed).filter(({ path: path12 }) => matchValue(safeUrl(path12), resolvedPath));
+      let matchedMockDispatches = mockDispatches.filter(({ consumed }) => !consumed).filter(({ path: path13 }) => matchValue(safeUrl(path13), resolvedPath));
       if (matchedMockDispatches.length === 0) {
         throw new MockNotMatchedError(`Mock dispatch not matched for path '${resolvedPath}'`);
       }
@@ -10696,9 +10696,9 @@ var require_mock_utils = __commonJS({
       }
     }
     function buildKey(opts) {
-      const { path: path12, method, body, headers, query } = opts;
+      const { path: path13, method, body, headers, query } = opts;
       return {
-        path: path12,
+        path: path13,
         method,
         body,
         headers,
@@ -11161,10 +11161,10 @@ var require_pending_interceptors_formatter = __commonJS({
       }
       format(pendingInterceptors) {
         const withPrettyHeaders = pendingInterceptors.map(
-          ({ method, path: path12, data: { statusCode }, persist, times, timesInvoked, origin }) => ({
+          ({ method, path: path13, data: { statusCode }, persist, times, timesInvoked, origin }) => ({
             Method: method,
             Origin: origin,
-            Path: path12,
+            Path: path13,
             "Status code": statusCode,
             Persistent: persist ? PERSISTENT : NOT_PERSISTENT,
             Invocations: timesInvoked,
@@ -16045,9 +16045,9 @@ var require_util6 = __commonJS({
         }
       }
     }
-    function validateCookiePath(path12) {
-      for (let i2 = 0; i2 < path12.length; ++i2) {
-        const code = path12.charCodeAt(i2);
+    function validateCookiePath(path13) {
+      for (let i2 = 0; i2 < path13.length; ++i2) {
+        const code = path13.charCodeAt(i2);
         if (code < 32 || // exclude CTLs (0-31)
         code > 126 || // exclude DEL and non-ascii
         code === 59) {
@@ -18889,11 +18889,11 @@ var require_undici = __commonJS({
           if (typeof opts.path !== "string") {
             throw new InvalidArgumentError("invalid opts.path");
           }
-          let path12 = opts.path;
+          let path13 = opts.path;
           if (!opts.path.startsWith("/")) {
-            path12 = `/${path12}`;
+            path13 = `/${path13}`;
           }
-          url = new URL(util2.parseOrigin(url).origin + path12);
+          url = new URL(util2.parseOrigin(url).origin + path13);
         } else {
           if (!opts) {
             opts = typeof url === "object" ? url : {};
@@ -19041,17 +19041,17 @@ var require_visit = __commonJS({
     visit.BREAK = BREAK;
     visit.SKIP = SKIP;
     visit.REMOVE = REMOVE;
-    function visit_(key, node, visitor, path12) {
-      const ctrl = callVisitor(key, node, visitor, path12);
+    function visit_(key, node, visitor, path13) {
+      const ctrl = callVisitor(key, node, visitor, path13);
       if (identity3.isNode(ctrl) || identity3.isPair(ctrl)) {
-        replaceNode(key, path12, ctrl);
-        return visit_(key, ctrl, visitor, path12);
+        replaceNode(key, path13, ctrl);
+        return visit_(key, ctrl, visitor, path13);
       }
       if (typeof ctrl !== "symbol") {
         if (identity3.isCollection(node)) {
-          path12 = Object.freeze(path12.concat(node));
+          path13 = Object.freeze(path13.concat(node));
           for (let i2 = 0; i2 < node.items.length; ++i2) {
-            const ci = visit_(i2, node.items[i2], visitor, path12);
+            const ci = visit_(i2, node.items[i2], visitor, path13);
             if (typeof ci === "number")
               i2 = ci - 1;
             else if (ci === BREAK)
@@ -19062,13 +19062,13 @@ var require_visit = __commonJS({
             }
           }
         } else if (identity3.isPair(node)) {
-          path12 = Object.freeze(path12.concat(node));
-          const ck = visit_("key", node.key, visitor, path12);
+          path13 = Object.freeze(path13.concat(node));
+          const ck = visit_("key", node.key, visitor, path13);
           if (ck === BREAK)
             return BREAK;
           else if (ck === REMOVE)
             node.key = null;
-          const cv = visit_("value", node.value, visitor, path12);
+          const cv = visit_("value", node.value, visitor, path13);
           if (cv === BREAK)
             return BREAK;
           else if (cv === REMOVE)
@@ -19089,17 +19089,17 @@ var require_visit = __commonJS({
     visitAsync.BREAK = BREAK;
     visitAsync.SKIP = SKIP;
     visitAsync.REMOVE = REMOVE;
-    async function visitAsync_(key, node, visitor, path12) {
-      const ctrl = await callVisitor(key, node, visitor, path12);
+    async function visitAsync_(key, node, visitor, path13) {
+      const ctrl = await callVisitor(key, node, visitor, path13);
       if (identity3.isNode(ctrl) || identity3.isPair(ctrl)) {
-        replaceNode(key, path12, ctrl);
-        return visitAsync_(key, ctrl, visitor, path12);
+        replaceNode(key, path13, ctrl);
+        return visitAsync_(key, ctrl, visitor, path13);
       }
       if (typeof ctrl !== "symbol") {
         if (identity3.isCollection(node)) {
-          path12 = Object.freeze(path12.concat(node));
+          path13 = Object.freeze(path13.concat(node));
           for (let i2 = 0; i2 < node.items.length; ++i2) {
-            const ci = await visitAsync_(i2, node.items[i2], visitor, path12);
+            const ci = await visitAsync_(i2, node.items[i2], visitor, path13);
             if (typeof ci === "number")
               i2 = ci - 1;
             else if (ci === BREAK)
@@ -19110,13 +19110,13 @@ var require_visit = __commonJS({
             }
           }
         } else if (identity3.isPair(node)) {
-          path12 = Object.freeze(path12.concat(node));
-          const ck = await visitAsync_("key", node.key, visitor, path12);
+          path13 = Object.freeze(path13.concat(node));
+          const ck = await visitAsync_("key", node.key, visitor, path13);
           if (ck === BREAK)
             return BREAK;
           else if (ck === REMOVE)
             node.key = null;
-          const cv = await visitAsync_("value", node.value, visitor, path12);
+          const cv = await visitAsync_("value", node.value, visitor, path13);
           if (cv === BREAK)
             return BREAK;
           else if (cv === REMOVE)
@@ -19143,23 +19143,23 @@ var require_visit = __commonJS({
       }
       return visitor;
     }
-    function callVisitor(key, node, visitor, path12) {
+    function callVisitor(key, node, visitor, path13) {
       if (typeof visitor === "function")
-        return visitor(key, node, path12);
+        return visitor(key, node, path13);
       if (identity3.isMap(node))
-        return visitor.Map?.(key, node, path12);
+        return visitor.Map?.(key, node, path13);
       if (identity3.isSeq(node))
-        return visitor.Seq?.(key, node, path12);
+        return visitor.Seq?.(key, node, path13);
       if (identity3.isPair(node))
-        return visitor.Pair?.(key, node, path12);
+        return visitor.Pair?.(key, node, path13);
       if (identity3.isScalar(node))
-        return visitor.Scalar?.(key, node, path12);
+        return visitor.Scalar?.(key, node, path13);
       if (identity3.isAlias(node))
-        return visitor.Alias?.(key, node, path12);
+        return visitor.Alias?.(key, node, path13);
       return void 0;
     }
-    function replaceNode(key, path12, node) {
-      const parent = path12[path12.length - 1];
+    function replaceNode(key, path13, node) {
+      const parent = path13[path13.length - 1];
       if (identity3.isCollection(parent)) {
         parent.items[key] = node;
       } else if (identity3.isPair(parent)) {
@@ -19769,10 +19769,10 @@ var require_Collection = __commonJS({
     var createNode = require_createNode();
     var identity3 = require_identity();
     var Node = require_Node();
-    function collectionFromPath(schema, path12, value) {
+    function collectionFromPath(schema, path13, value) {
       let v = value;
-      for (let i2 = path12.length - 1; i2 >= 0; --i2) {
-        const k = path12[i2];
+      for (let i2 = path13.length - 1; i2 >= 0; --i2) {
+        const k = path13[i2];
         if (typeof k === "number" && Number.isInteger(k) && k >= 0) {
           const a2 = [];
           a2[k] = v;
@@ -19791,7 +19791,7 @@ var require_Collection = __commonJS({
         sourceObjects: /* @__PURE__ */ new Map()
       });
     }
-    var isEmptyPath = (path12) => path12 == null || typeof path12 === "object" && !!path12[Symbol.iterator]().next().done;
+    var isEmptyPath = (path13) => path13 == null || typeof path13 === "object" && !!path13[Symbol.iterator]().next().done;
     var Collection = class extends Node.NodeBase {
       constructor(type, schema) {
         super(type);
@@ -19821,11 +19821,11 @@ var require_Collection = __commonJS({
        * be a Pair instance or a `{ key, value }` object, which may not have a key
        * that already exists in the map.
        */
-      addIn(path12, value) {
-        if (isEmptyPath(path12))
+      addIn(path13, value) {
+        if (isEmptyPath(path13))
           this.add(value);
         else {
-          const [key, ...rest] = path12;
+          const [key, ...rest] = path13;
           const node = this.get(key, true);
           if (identity3.isCollection(node))
             node.addIn(rest, value);
@@ -19839,8 +19839,8 @@ var require_Collection = __commonJS({
        * Removes a value from the collection.
        * @returns `true` if the item was found and removed.
        */
-      deleteIn(path12) {
-        const [key, ...rest] = path12;
+      deleteIn(path13) {
+        const [key, ...rest] = path13;
         if (rest.length === 0)
           return this.delete(key);
         const node = this.get(key, true);
@@ -19854,8 +19854,8 @@ var require_Collection = __commonJS({
        * scalar values from their surrounding node; to disable set `keepScalar` to
        * `true` (collections are always returned intact).
        */
-      getIn(path12, keepScalar) {
-        const [key, ...rest] = path12;
+      getIn(path13, keepScalar) {
+        const [key, ...rest] = path13;
         const node = this.get(key, true);
         if (rest.length === 0)
           return !keepScalar && identity3.isScalar(node) ? node.value : node;
@@ -19873,8 +19873,8 @@ var require_Collection = __commonJS({
       /**
        * Checks if the collection includes a value with the key `key`.
        */
-      hasIn(path12) {
-        const [key, ...rest] = path12;
+      hasIn(path13) {
+        const [key, ...rest] = path13;
         if (rest.length === 0)
           return this.has(key);
         const node = this.get(key, true);
@@ -19884,8 +19884,8 @@ var require_Collection = __commonJS({
        * Sets a value in this collection. For `!!set`, `value` needs to be a
        * boolean to add/remove the item from the set.
        */
-      setIn(path12, value) {
-        const [key, ...rest] = path12;
+      setIn(path13, value) {
+        const [key, ...rest] = path13;
         if (rest.length === 0) {
           this.set(key, value);
         } else {
@@ -22400,9 +22400,9 @@ var require_Document = __commonJS({
           this.contents.add(value);
       }
       /** Adds a value to the document. */
-      addIn(path12, value) {
+      addIn(path13, value) {
         if (assertCollection(this.contents))
-          this.contents.addIn(path12, value);
+          this.contents.addIn(path13, value);
       }
       /**
        * Create a new `Alias` node, ensuring that the target `node` has the required anchor.
@@ -22477,14 +22477,14 @@ var require_Document = __commonJS({
        * Removes a value from the document.
        * @returns `true` if the item was found and removed.
        */
-      deleteIn(path12) {
-        if (Collection.isEmptyPath(path12)) {
+      deleteIn(path13) {
+        if (Collection.isEmptyPath(path13)) {
           if (this.contents == null)
             return false;
           this.contents = null;
           return true;
         }
-        return assertCollection(this.contents) ? this.contents.deleteIn(path12) : false;
+        return assertCollection(this.contents) ? this.contents.deleteIn(path13) : false;
       }
       /**
        * Returns item at `key`, or `undefined` if not found. By default unwraps
@@ -22499,10 +22499,10 @@ var require_Document = __commonJS({
        * scalar values from their surrounding node; to disable set `keepScalar` to
        * `true` (collections are always returned intact).
        */
-      getIn(path12, keepScalar) {
-        if (Collection.isEmptyPath(path12))
+      getIn(path13, keepScalar) {
+        if (Collection.isEmptyPath(path13))
           return !keepScalar && identity3.isScalar(this.contents) ? this.contents.value : this.contents;
-        return identity3.isCollection(this.contents) ? this.contents.getIn(path12, keepScalar) : void 0;
+        return identity3.isCollection(this.contents) ? this.contents.getIn(path13, keepScalar) : void 0;
       }
       /**
        * Checks if the document includes a value with the key `key`.
@@ -22513,10 +22513,10 @@ var require_Document = __commonJS({
       /**
        * Checks if the document includes a value at `path`.
        */
-      hasIn(path12) {
-        if (Collection.isEmptyPath(path12))
+      hasIn(path13) {
+        if (Collection.isEmptyPath(path13))
           return this.contents !== void 0;
-        return identity3.isCollection(this.contents) ? this.contents.hasIn(path12) : false;
+        return identity3.isCollection(this.contents) ? this.contents.hasIn(path13) : false;
       }
       /**
        * Sets a value in this document. For `!!set`, `value` needs to be a
@@ -22533,13 +22533,13 @@ var require_Document = __commonJS({
        * Sets a value in this document. For `!!set`, `value` needs to be a
        * boolean to add/remove the item from the set.
        */
-      setIn(path12, value) {
-        if (Collection.isEmptyPath(path12)) {
+      setIn(path13, value) {
+        if (Collection.isEmptyPath(path13)) {
           this.contents = value;
         } else if (this.contents == null) {
-          this.contents = Collection.collectionFromPath(this.schema, Array.from(path12), value);
+          this.contents = Collection.collectionFromPath(this.schema, Array.from(path13), value);
         } else if (assertCollection(this.contents)) {
-          this.contents.setIn(path12, value);
+          this.contents.setIn(path13, value);
         }
       }
       /**
@@ -24499,9 +24499,9 @@ var require_cst_visit = __commonJS({
     visit.BREAK = BREAK;
     visit.SKIP = SKIP;
     visit.REMOVE = REMOVE;
-    visit.itemAtPath = (cst, path12) => {
+    visit.itemAtPath = (cst, path13) => {
       let item = cst;
-      for (const [field, index] of path12) {
+      for (const [field, index] of path13) {
         const tok = item?.[field];
         if (tok && "items" in tok) {
           item = tok.items[index];
@@ -24510,23 +24510,23 @@ var require_cst_visit = __commonJS({
       }
       return item;
     };
-    visit.parentCollection = (cst, path12) => {
-      const parent = visit.itemAtPath(cst, path12.slice(0, -1));
-      const field = path12[path12.length - 1][0];
+    visit.parentCollection = (cst, path13) => {
+      const parent = visit.itemAtPath(cst, path13.slice(0, -1));
+      const field = path13[path13.length - 1][0];
       const coll = parent?.[field];
       if (coll && "items" in coll)
         return coll;
       throw new Error("Parent collection not found");
     };
-    function _visit(path12, item, visitor) {
-      let ctrl = visitor(item, path12);
+    function _visit(path13, item, visitor) {
+      let ctrl = visitor(item, path13);
       if (typeof ctrl === "symbol")
         return ctrl;
       for (const field of ["key", "value"]) {
         const token = item[field];
         if (token && "items" in token) {
           for (let i2 = 0; i2 < token.items.length; ++i2) {
-            const ci = _visit(Object.freeze(path12.concat([[field, i2]])), token.items[i2], visitor);
+            const ci = _visit(Object.freeze(path13.concat([[field, i2]])), token.items[i2], visitor);
             if (typeof ci === "number")
               i2 = ci - 1;
             else if (ci === BREAK)
@@ -24537,10 +24537,10 @@ var require_cst_visit = __commonJS({
             }
           }
           if (typeof ctrl === "function" && field === "key")
-            ctrl = ctrl(item, path12);
+            ctrl = ctrl(item, path13);
         }
       }
-      return typeof ctrl === "function" ? ctrl(item, path12) : ctrl;
+      return typeof ctrl === "function" ? ctrl(item, path13) : ctrl;
     }
     exports2.visit = visit;
   }
@@ -26363,7 +26363,7 @@ var require_path = __commonJS({
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.convertPosixPathToPattern = exports2.convertWindowsPathToPattern = exports2.convertPathToPattern = exports2.escapePosixPath = exports2.escapeWindowsPath = exports2.escape = exports2.removeLeadingDotSegment = exports2.makeAbsolute = exports2.unixify = void 0;
     var os6 = require("os");
-    var path12 = require("path");
+    var path13 = require("path");
     var IS_WINDOWS_PLATFORM = os6.platform() === "win32";
     var LEADING_DOT_SEGMENT_CHARACTERS_COUNT = 2;
     var POSIX_UNESCAPED_GLOB_SYMBOLS_RE = /(\\?)([()*?[\]{|}]|^!|[!+@](?=\()|\\(?![!()*+?@[\]{|}]))/g;
@@ -26375,7 +26375,7 @@ var require_path = __commonJS({
     }
     exports2.unixify = unixify;
     function makeAbsolute(cwd, filepath) {
-      return path12.resolve(cwd, filepath);
+      return path13.resolve(cwd, filepath);
     }
     exports2.makeAbsolute = makeAbsolute;
     function removeLeadingDotSegment(entry) {
@@ -27672,7 +27672,7 @@ var require_braces = __commonJS({
 var require_constants7 = __commonJS({
   "node_modules/.pnpm/picomatch@2.3.2/node_modules/picomatch/lib/constants.js"(exports2, module2) {
     "use strict";
-    var path12 = require("path");
+    var path13 = require("path");
     var WIN_SLASH = "\\\\/";
     var WIN_NO_SLASH = `[^${WIN_SLASH}]`;
     var DEFAULT_MAX_EXTGLOB_RECURSION = 0;
@@ -27846,7 +27846,7 @@ var require_constants7 = __commonJS({
       /* | */
       CHAR_ZERO_WIDTH_NOBREAK_SPACE: 65279,
       /* \uFEFF */
-      SEP: path12.sep,
+      SEP: path13.sep,
       /**
        * Create EXTGLOB_CHARS
        */
@@ -27873,7 +27873,7 @@ var require_constants7 = __commonJS({
 var require_utils3 = __commonJS({
   "node_modules/.pnpm/picomatch@2.3.2/node_modules/picomatch/lib/utils.js"(exports2) {
     "use strict";
-    var path12 = require("path");
+    var path13 = require("path");
     var win32 = process.platform === "win32";
     var {
       REGEX_BACKSLASH,
@@ -27902,7 +27902,7 @@ var require_utils3 = __commonJS({
       if (options && typeof options.windows === "boolean") {
         return options.windows;
       }
-      return win32 === true || path12.sep === "\\";
+      return win32 === true || path13.sep === "\\";
     };
     exports2.escapeLast = (input, char, lastIdx) => {
       const idx = input.lastIndexOf(char, lastIdx);
@@ -29266,7 +29266,7 @@ var require_parse3 = __commonJS({
 var require_picomatch = __commonJS({
   "node_modules/.pnpm/picomatch@2.3.2/node_modules/picomatch/lib/picomatch.js"(exports2, module2) {
     "use strict";
-    var path12 = require("path");
+    var path13 = require("path");
     var scan = require_scan();
     var parse = require_parse3();
     var utils = require_utils3();
@@ -29351,7 +29351,7 @@ var require_picomatch = __commonJS({
     };
     picomatch.matchBase = (input, glob, options, posix = utils.isWindows(options)) => {
       const regex = glob instanceof RegExp ? glob : picomatch.makeRe(glob, options);
-      return regex.test(path12.basename(input));
+      return regex.test(path13.basename(input));
     };
     picomatch.isMatch = (str, patterns, options) => picomatch(patterns, options)(str);
     picomatch.parse = (pattern, options) => {
@@ -29578,7 +29578,7 @@ var require_pattern = __commonJS({
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.isAbsolute = exports2.partitionAbsoluteAndRelative = exports2.removeDuplicateSlashes = exports2.matchAny = exports2.convertPatternsToRe = exports2.makeRe = exports2.getPatternParts = exports2.expandBraceExpansion = exports2.expandPatternsWithBraceExpansion = exports2.isAffectDepthOfReadingPattern = exports2.endsWithSlashGlobStar = exports2.hasGlobStar = exports2.getBaseDirectory = exports2.isPatternRelatedToParentDirectory = exports2.getPatternsOutsideCurrentDirectory = exports2.getPatternsInsideCurrentDirectory = exports2.getPositivePatterns = exports2.getNegativePatterns = exports2.isPositivePattern = exports2.isNegativePattern = exports2.convertToNegativePattern = exports2.convertToPositivePattern = exports2.isDynamicPattern = exports2.isStaticPattern = void 0;
-    var path12 = require("path");
+    var path13 = require("path");
     var globParent = require_glob_parent();
     var micromatch = require_micromatch();
     var GLOBSTAR = "**";
@@ -29673,7 +29673,7 @@ var require_pattern = __commonJS({
     }
     exports2.endsWithSlashGlobStar = endsWithSlashGlobStar;
     function isAffectDepthOfReadingPattern(pattern) {
-      const basename = path12.basename(pattern);
+      const basename = path13.basename(pattern);
       return endsWithSlashGlobStar(pattern) || isStaticPattern(basename);
     }
     exports2.isAffectDepthOfReadingPattern = isAffectDepthOfReadingPattern;
@@ -29731,7 +29731,7 @@ var require_pattern = __commonJS({
     }
     exports2.partitionAbsoluteAndRelative = partitionAbsoluteAndRelative;
     function isAbsolute(pattern) {
-      return path12.isAbsolute(pattern);
+      return path13.isAbsolute(pattern);
     }
     exports2.isAbsolute = isAbsolute;
   }
@@ -29908,8 +29908,8 @@ var require_utils4 = __commonJS({
     exports2.errno = errno;
     var fs3 = require_fs();
     exports2.fs = fs3;
-    var path12 = require_path();
-    exports2.path = path12;
+    var path13 = require_path();
+    exports2.path = path13;
     var pattern = require_pattern();
     exports2.pattern = pattern;
     var stream = require_stream();
@@ -30021,8 +30021,8 @@ var require_async = __commonJS({
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.read = void 0;
-    function read(path12, settings, callback) {
-      settings.fs.lstat(path12, (lstatError, lstat2) => {
+    function read(path13, settings, callback) {
+      settings.fs.lstat(path13, (lstatError, lstat2) => {
         if (lstatError !== null) {
           callFailureCallback(callback, lstatError);
           return;
@@ -30031,7 +30031,7 @@ var require_async = __commonJS({
           callSuccessCallback(callback, lstat2);
           return;
         }
-        settings.fs.stat(path12, (statError, stat3) => {
+        settings.fs.stat(path13, (statError, stat3) => {
           if (statError !== null) {
             if (settings.throwErrorOnBrokenSymbolicLink) {
               callFailureCallback(callback, statError);
@@ -30063,13 +30063,13 @@ var require_sync = __commonJS({
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.read = void 0;
-    function read(path12, settings) {
-      const lstat2 = settings.fs.lstatSync(path12);
+    function read(path13, settings) {
+      const lstat2 = settings.fs.lstatSync(path13);
       if (!lstat2.isSymbolicLink() || !settings.followSymbolicLink) {
         return lstat2;
       }
       try {
-        const stat3 = settings.fs.statSync(path12);
+        const stat3 = settings.fs.statSync(path13);
         if (settings.markSymbolicLink) {
           stat3.isSymbolicLink = () => true;
         }
@@ -30140,17 +30140,17 @@ var require_out = __commonJS({
     var sync = require_sync();
     var settings_1 = require_settings();
     exports2.Settings = settings_1.default;
-    function stat3(path12, optionsOrSettingsOrCallback, callback) {
+    function stat3(path13, optionsOrSettingsOrCallback, callback) {
       if (typeof optionsOrSettingsOrCallback === "function") {
-        async.read(path12, getSettings(), optionsOrSettingsOrCallback);
+        async.read(path13, getSettings(), optionsOrSettingsOrCallback);
         return;
       }
-      async.read(path12, getSettings(optionsOrSettingsOrCallback), callback);
+      async.read(path13, getSettings(optionsOrSettingsOrCallback), callback);
     }
     exports2.stat = stat3;
-    function statSync2(path12, optionsOrSettings) {
+    function statSync2(path13, optionsOrSettings) {
       const settings = getSettings(optionsOrSettings);
-      return sync.read(path12, settings);
+      return sync.read(path13, settings);
     }
     exports2.statSync = statSync2;
     function getSettings(settingsOrOptions = {}) {
@@ -30366,16 +30366,16 @@ var require_async2 = __commonJS({
           return;
         }
         const tasks = names.map((name) => {
-          const path12 = common2.joinPathSegments(directory, name, settings.pathSegmentSeparator);
+          const path13 = common2.joinPathSegments(directory, name, settings.pathSegmentSeparator);
           return (done) => {
-            fsStat.stat(path12, settings.fsStatSettings, (error2, stats) => {
+            fsStat.stat(path13, settings.fsStatSettings, (error2, stats) => {
               if (error2 !== null) {
                 done(error2);
                 return;
               }
               const entry = {
                 name,
-                path: path12,
+                path: path13,
                 dirent: utils.fs.createDirentFromStats(name, stats)
               };
               if (settings.stats) {
@@ -30493,7 +30493,7 @@ var require_settings2 = __commonJS({
   "node_modules/.pnpm/@nodelib+fs.scandir@2.1.5/node_modules/@nodelib/fs.scandir/out/settings.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
-    var path12 = require("path");
+    var path13 = require("path");
     var fsStat = require_out();
     var fs3 = require_fs4();
     var Settings = class {
@@ -30501,7 +30501,7 @@ var require_settings2 = __commonJS({
         this._options = _options;
         this.followSymbolicLinks = this._getValue(this._options.followSymbolicLinks, false);
         this.fs = fs3.createFileSystemAdapter(this._options.fs);
-        this.pathSegmentSeparator = this._getValue(this._options.pathSegmentSeparator, path12.sep);
+        this.pathSegmentSeparator = this._getValue(this._options.pathSegmentSeparator, path13.sep);
         this.stats = this._getValue(this._options.stats, false);
         this.throwErrorOnBrokenSymbolicLink = this._getValue(this._options.throwErrorOnBrokenSymbolicLink, true);
         this.fsStatSettings = new fsStat.Settings({
@@ -30528,17 +30528,17 @@ var require_out2 = __commonJS({
     var sync = require_sync2();
     var settings_1 = require_settings2();
     exports2.Settings = settings_1.default;
-    function scandir(path12, optionsOrSettingsOrCallback, callback) {
+    function scandir(path13, optionsOrSettingsOrCallback, callback) {
       if (typeof optionsOrSettingsOrCallback === "function") {
-        async.read(path12, getSettings(), optionsOrSettingsOrCallback);
+        async.read(path13, getSettings(), optionsOrSettingsOrCallback);
         return;
       }
-      async.read(path12, getSettings(optionsOrSettingsOrCallback), callback);
+      async.read(path13, getSettings(optionsOrSettingsOrCallback), callback);
     }
     exports2.scandir = scandir;
-    function scandirSync(path12, optionsOrSettings) {
+    function scandirSync(path13, optionsOrSettings) {
       const settings = getSettings(optionsOrSettings);
-      return sync.read(path12, settings);
+      return sync.read(path13, settings);
     }
     exports2.scandirSync = scandirSync;
     function getSettings(settingsOrOptions = {}) {
@@ -31186,7 +31186,7 @@ var require_settings3 = __commonJS({
   "node_modules/.pnpm/@nodelib+fs.walk@1.2.8/node_modules/@nodelib/fs.walk/out/settings.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
-    var path12 = require("path");
+    var path13 = require("path");
     var fsScandir = require_out2();
     var Settings = class {
       constructor(_options = {}) {
@@ -31196,7 +31196,7 @@ var require_settings3 = __commonJS({
         this.deepFilter = this._getValue(this._options.deepFilter, null);
         this.entryFilter = this._getValue(this._options.entryFilter, null);
         this.errorFilter = this._getValue(this._options.errorFilter, null);
-        this.pathSegmentSeparator = this._getValue(this._options.pathSegmentSeparator, path12.sep);
+        this.pathSegmentSeparator = this._getValue(this._options.pathSegmentSeparator, path13.sep);
         this.fsScandirSettings = new fsScandir.Settings({
           followSymbolicLinks: this._options.followSymbolicLinks,
           fs: this._options.fs,
@@ -31258,7 +31258,7 @@ var require_reader2 = __commonJS({
   "node_modules/.pnpm/fast-glob@3.3.3/node_modules/fast-glob/out/readers/reader.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
-    var path12 = require("path");
+    var path13 = require("path");
     var fsStat = require_out();
     var utils = require_utils4();
     var Reader = class {
@@ -31271,7 +31271,7 @@ var require_reader2 = __commonJS({
         });
       }
       _getFullEntryPath(filepath) {
-        return path12.resolve(this._settings.cwd, filepath);
+        return path13.resolve(this._settings.cwd, filepath);
       }
       _makeEntry(stats, pattern) {
         const entry = {
@@ -31687,7 +31687,7 @@ var require_provider = __commonJS({
   "node_modules/.pnpm/fast-glob@3.3.3/node_modules/fast-glob/out/providers/provider.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
-    var path12 = require("path");
+    var path13 = require("path");
     var deep_1 = require_deep();
     var entry_1 = require_entry();
     var error_1 = require_error();
@@ -31701,7 +31701,7 @@ var require_provider = __commonJS({
         this.entryTransformer = new entry_2.default(this._settings);
       }
       _getRootDirectory(task) {
-        return path12.resolve(this._settings.cwd, task.base);
+        return path13.resolve(this._settings.cwd, task.base);
       }
       _getReaderOptions(task) {
         const basePath = task.base === "." ? "" : task.base;
@@ -32043,7 +32043,7 @@ var require_windows = __commonJS({
     module2.exports = isexe;
     isexe.sync = sync;
     var fs3 = require("fs");
-    function checkPathExt(path12, options) {
+    function checkPathExt(path13, options) {
       var pathext = options.pathExt !== void 0 ? options.pathExt : process.env.PATHEXT;
       if (!pathext) {
         return true;
@@ -32054,25 +32054,25 @@ var require_windows = __commonJS({
       }
       for (var i2 = 0; i2 < pathext.length; i2++) {
         var p = pathext[i2].toLowerCase();
-        if (p && path12.substr(-p.length).toLowerCase() === p) {
+        if (p && path13.substr(-p.length).toLowerCase() === p) {
           return true;
         }
       }
       return false;
     }
-    function checkStat(stat3, path12, options) {
+    function checkStat(stat3, path13, options) {
       if (!stat3.isSymbolicLink() && !stat3.isFile()) {
         return false;
       }
-      return checkPathExt(path12, options);
+      return checkPathExt(path13, options);
     }
-    function isexe(path12, options, cb) {
-      fs3.stat(path12, function(er, stat3) {
-        cb(er, er ? false : checkStat(stat3, path12, options));
+    function isexe(path13, options, cb) {
+      fs3.stat(path13, function(er, stat3) {
+        cb(er, er ? false : checkStat(stat3, path13, options));
       });
     }
-    function sync(path12, options) {
-      return checkStat(fs3.statSync(path12), path12, options);
+    function sync(path13, options) {
+      return checkStat(fs3.statSync(path13), path13, options);
     }
   }
 });
@@ -32083,13 +32083,13 @@ var require_mode = __commonJS({
     module2.exports = isexe;
     isexe.sync = sync;
     var fs3 = require("fs");
-    function isexe(path12, options, cb) {
-      fs3.stat(path12, function(er, stat3) {
+    function isexe(path13, options, cb) {
+      fs3.stat(path13, function(er, stat3) {
         cb(er, er ? false : checkStat(stat3, options));
       });
     }
-    function sync(path12, options) {
-      return checkStat(fs3.statSync(path12), options);
+    function sync(path13, options) {
+      return checkStat(fs3.statSync(path13), options);
     }
     function checkStat(stat3, options) {
       return stat3.isFile() && checkMode(stat3, options);
@@ -32122,7 +32122,7 @@ var require_isexe = __commonJS({
     }
     module2.exports = isexe;
     isexe.sync = sync;
-    function isexe(path12, options, cb) {
+    function isexe(path13, options, cb) {
       if (typeof options === "function") {
         cb = options;
         options = {};
@@ -32132,7 +32132,7 @@ var require_isexe = __commonJS({
           throw new TypeError("callback not provided");
         }
         return new Promise(function(resolve, reject) {
-          isexe(path12, options || {}, function(er, is) {
+          isexe(path13, options || {}, function(er, is) {
             if (er) {
               reject(er);
             } else {
@@ -32141,7 +32141,7 @@ var require_isexe = __commonJS({
           });
         });
       }
-      core(path12, options || {}, function(er, is) {
+      core(path13, options || {}, function(er, is) {
         if (er) {
           if (er.code === "EACCES" || options && options.ignoreErrors) {
             er = null;
@@ -32151,9 +32151,9 @@ var require_isexe = __commonJS({
         cb(er, is);
       });
     }
-    function sync(path12, options) {
+    function sync(path13, options) {
       try {
-        return core.sync(path12, options || {});
+        return core.sync(path13, options || {});
       } catch (er) {
         if (options && options.ignoreErrors || er.code === "EACCES") {
           return false;
@@ -32169,7 +32169,7 @@ var require_isexe = __commonJS({
 var require_which = __commonJS({
   "node_modules/.pnpm/which@2.0.2/node_modules/which/which.js"(exports2, module2) {
     var isWindows = process.platform === "win32" || process.env.OSTYPE === "cygwin" || process.env.OSTYPE === "msys";
-    var path12 = require("path");
+    var path13 = require("path");
     var COLON = isWindows ? ";" : ":";
     var isexe = require_isexe();
     var getNotFoundError = (cmd) => Object.assign(new Error(`not found: ${cmd}`), { code: "ENOENT" });
@@ -32207,7 +32207,7 @@ var require_which = __commonJS({
           return opt.all && found.length ? resolve(found) : reject(getNotFoundError(cmd));
         const ppRaw = pathEnv[i2];
         const pathPart = /^".*"$/.test(ppRaw) ? ppRaw.slice(1, -1) : ppRaw;
-        const pCmd = path12.join(pathPart, cmd);
+        const pCmd = path13.join(pathPart, cmd);
         const p = !pathPart && /^\.[\\\/]/.test(cmd) ? cmd.slice(0, 2) + pCmd : pCmd;
         resolve(subStep(p, i2, 0));
       });
@@ -32234,7 +32234,7 @@ var require_which = __commonJS({
       for (let i2 = 0; i2 < pathEnv.length; i2++) {
         const ppRaw = pathEnv[i2];
         const pathPart = /^".*"$/.test(ppRaw) ? ppRaw.slice(1, -1) : ppRaw;
-        const pCmd = path12.join(pathPart, cmd);
+        const pCmd = path13.join(pathPart, cmd);
         const p = !pathPart && /^\.[\\\/]/.test(cmd) ? cmd.slice(0, 2) + pCmd : pCmd;
         for (let j = 0; j < pathExt.length; j++) {
           const cur = p + pathExt[j];
@@ -32282,7 +32282,7 @@ var require_path_key = __commonJS({
 var require_resolveCommand = __commonJS({
   "node_modules/.pnpm/cross-spawn@7.0.6/node_modules/cross-spawn/lib/util/resolveCommand.js"(exports2, module2) {
     "use strict";
-    var path12 = require("path");
+    var path13 = require("path");
     var which2 = require_which();
     var getPathKey = require_path_key();
     function resolveCommandAttempt(parsed, withoutPathExt) {
@@ -32300,7 +32300,7 @@ var require_resolveCommand = __commonJS({
       try {
         resolved = which2.sync(parsed.command, {
           path: env[getPathKey({ env })],
-          pathExt: withoutPathExt ? path12.delimiter : void 0
+          pathExt: withoutPathExt ? path13.delimiter : void 0
         });
       } catch (e) {
       } finally {
@@ -32309,7 +32309,7 @@ var require_resolveCommand = __commonJS({
         }
       }
       if (resolved) {
-        resolved = path12.resolve(hasCustomCwd ? parsed.options.cwd : "", resolved);
+        resolved = path13.resolve(hasCustomCwd ? parsed.options.cwd : "", resolved);
       }
       return resolved;
     }
@@ -32363,8 +32363,8 @@ var require_shebang_command = __commonJS({
       if (!match) {
         return null;
       }
-      const [path12, argument] = match[0].replace(/#! ?/, "").split(" ");
-      const binary = path12.split("/").pop();
+      const [path13, argument] = match[0].replace(/#! ?/, "").split(" ");
+      const binary = path13.split("/").pop();
       if (binary === "env") {
         return argument;
       }
@@ -32399,7 +32399,7 @@ var require_readShebang = __commonJS({
 var require_parse4 = __commonJS({
   "node_modules/.pnpm/cross-spawn@7.0.6/node_modules/cross-spawn/lib/parse.js"(exports2, module2) {
     "use strict";
-    var path12 = require("path");
+    var path13 = require("path");
     var resolveCommand = require_resolveCommand();
     var escape = require_escape();
     var readShebang = require_readShebang();
@@ -32424,7 +32424,7 @@ var require_parse4 = __commonJS({
       const needsShell = !isExecutableRegExp.test(commandFile);
       if (parsed.options.forceShell || needsShell) {
         const needsDoubleEscapeMetaChars = isCmdShimRegExp.test(commandFile);
-        parsed.command = path12.normalize(parsed.command);
+        parsed.command = path13.normalize(parsed.command);
         parsed.command = escape.command(parsed.command);
         parsed.args = parsed.args.map((arg) => escape.argument(arg, needsDoubleEscapeMetaChars));
         const shellCommand = [parsed.command].concat(parsed.args).join(" ");
@@ -33103,8 +33103,8 @@ function info(message) {
 }
 
 // action/src/main.ts
-var import_promises16 = require("node:fs/promises");
-var import_node_path11 = __toESM(require("node:path"), 1);
+var import_promises17 = require("node:fs/promises");
+var import_node_path12 = __toESM(require("node:path"), 1);
 
 // src/config/loader.ts
 var import_promises = require("node:fs/promises");
@@ -33590,8 +33590,8 @@ function getErrorMap() {
 
 // node_modules/.pnpm/zod@3.25.76/node_modules/zod/v3/helpers/parseUtil.js
 var makeIssue = (params) => {
-  const { data, path: path12, errorMaps, issueData } = params;
-  const fullPath = [...path12, ...issueData.path || []];
+  const { data, path: path13, errorMaps, issueData } = params;
+  const fullPath = [...path13, ...issueData.path || []];
   const fullIssue = {
     ...issueData,
     path: fullPath
@@ -33707,11 +33707,11 @@ var errorUtil;
 
 // node_modules/.pnpm/zod@3.25.76/node_modules/zod/v3/types.js
 var ParseInputLazyPath = class {
-  constructor(parent, value, path12, key) {
+  constructor(parent, value, path13, key) {
     this._cachedPath = [];
     this.parent = parent;
     this.data = value;
-    this._path = path12;
+    this._path = path13;
     this._key = key;
   }
   get path() {
@@ -37204,8 +37204,8 @@ var verifySchema = external_exports.object({
 }).superRefine((verify, ctx) => {
   const mode = verify.mode;
   if (mode === void 0) return;
-  const fail = (path12, message) => {
-    ctx.addIssue({ code: external_exports.ZodIssueCode.custom, path: path12, message });
+  const fail = (path13, message) => {
+    ctx.addIssue({ code: external_exports.ZodIssueCode.custom, path: path13, message });
   };
   const hasPostconditions = (verify.commands?.length ?? 0) > 0 || verify.stdout !== void 0 || verify.stderr !== void 0 || (verify.files?.exists?.length ?? 0) > 0 || (verify.files?.notExists?.length ?? 0) > 0 || (Array.isArray(verify.json) ? verify.json.length > 0 : verify.json !== void 0);
   if ((mode === "goal" || mode === "custom") && verify.rerunOriginal === true) {
@@ -37310,9 +37310,9 @@ function validateConfigObject(data) {
   }));
   return { ok: false, issues };
 }
-function formatPath(path12) {
+function formatPath(path13) {
   let out = "";
-  for (const part of path12) {
+  for (const part of path13) {
     if (typeof part === "number") {
       out += "[" + part + "]";
     } else if (out === "") {
@@ -37574,6 +37574,188 @@ function tokenizeCommandLine(raw) {
   return { command, args };
 }
 
+// src/recovery/grouping.ts
+var BARE_LABEL = /^\s*(?:run|try|execute|to\s+fix\s+this,?\s+run|to\s+continue,?\s+run)\s*:?\s*$/i;
+var ALTERNATIVE_LABEL = /^\s*(?:run|try|execute)\s+(?:one\s+of|either)\b[^\n]*:?\s*$/i;
+var ALTERNATIVE_MARKERS = /\b(one\s+of|either|alternatively|optionally)\b/i;
+var OR_MARKER = /\bor\b/i;
+var THEN_MARKER = /\bthen\b/i;
+var AND_MARKER = /\band\b/i;
+var SETTING_COMMANDS = /* @__PURE__ */ new Set(["config", "configure", "set"]);
+var INTERPRETERS = /* @__PURE__ */ new Set([
+  "node",
+  "nodejs",
+  "python",
+  "python3",
+  "py",
+  "ruby",
+  "perl",
+  "bash",
+  "sh",
+  "zsh",
+  "pwsh",
+  "powershell",
+  "deno",
+  "bun",
+  "tsx"
+]);
+function executableName(command) {
+  return command.split("/").pop()?.split("\\").pop()?.toLowerCase().replace(/\.(exe|cmd|bat)$/, "") ?? command.toLowerCase();
+}
+function stripQuoted(text) {
+  return text.replace(/`[^`]*`/g, " ").replace(/'(?:[^'\\]|\\.)*'/g, " ").replace(/"(?:[^"\\]|\\.)*"/g, " ");
+}
+function argsEqual(a2, b) {
+  return a2.length === b.length && a2.every((value, idx) => value === b[idx]);
+}
+function firstDifference(a2, b) {
+  const max = Math.min(a2.length, b.length);
+  for (let i2 = 0; i2 < max; i2++) {
+    if (a2[i2] !== b[i2]) return i2;
+  }
+  return max;
+}
+function isSettingLike(command, args) {
+  const first = args[0]?.toLowerCase();
+  if (first !== void 0 && SETTING_COMMANDS.has(first)) return true;
+  const executable = executableName(command);
+  if (!INTERPRETERS.has(executable) || args.length < 2) return false;
+  const script = args[0] ?? "";
+  if (!/[\\/]/.test(script) && !/\.(?:m?[jt]s|cjs|py|rb|sh|ps1)$/i.test(script)) return false;
+  return SETTING_COMMANDS.has((args[1] ?? "").toLowerCase());
+}
+function formsComplementarySequence(items) {
+  if (items.length < 2) return false;
+  const first = items[0];
+  if (items.some((item) => executableName(item.command) !== executableName(first.command))) return false;
+  if (items.some((item) => !isSettingLike(item.command, item.args))) return false;
+  if (items.slice(1).some((item) => argsEqual(item.args, first.args))) return false;
+  for (const item of items.slice(1)) {
+    const diff = firstDifference(first.args, item.args);
+    const minLength = Math.min(first.args.length, item.args.length);
+    if (diff === 0) return false;
+    if (diff >= minLength - 1) return false;
+  }
+  return true;
+}
+function hasTrailingAnnotation(lines) {
+  return lines.length >= 2 && lines.every((line) => /(^|\s)#\s*\S/.test(line));
+}
+function isFenceDelimiter(text) {
+  return /^```/.test(text.trim());
+}
+function matchLabel(line) {
+  if (ALTERNATIVE_LABEL.test(line)) {
+    return { alternative: true, evidence: 'commands listed under a "one of/either" label' };
+  }
+  if (BARE_LABEL.test(line)) {
+    const bare = line.trim().replace(/:$/, "").trim();
+    return { alternative: false, evidence: 'commands listed after a bare "' + bare + '" label' };
+  }
+  return null;
+}
+function assignGroup(output, indices, relation, evidence, id) {
+  indices.forEach((itemIndex, index) => {
+    const item = output[itemIndex];
+    output[itemIndex] = {
+      ...item,
+      group: { id, relation, evidence, index, size: indices.length }
+    };
+  });
+}
+function attachAdviceGroups(items, lines, groupIdPrefix) {
+  const output = items.map((item) => ({ ...item }));
+  const used = /* @__PURE__ */ new Set();
+  let groupCounter = 0;
+  const byLine = /* @__PURE__ */ new Map();
+  output.forEach((item, index) => {
+    const list = byLine.get(item.line) ?? [];
+    list.push(index);
+    byLine.set(item.line, list);
+  });
+  for (const [lineNumber, indices] of byLine) {
+    if (indices.length < 2) continue;
+    const line = lines[lineNumber - 1] ?? "";
+    const outside = stripQuoted(line);
+    const groupItems = indices.map((index) => output[index]);
+    let relation;
+    let evidence;
+    if (ALTERNATIVE_MARKERS.test(outside) || OR_MARKER.test(outside)) {
+      relation = "alternative";
+      evidence = 'inline "or"/"either" offers mutually exclusive options';
+    } else if (THEN_MARKER.test(outside)) {
+      relation = "sequence";
+      evidence = 'inline "then" connector names a required order';
+    } else if (AND_MARKER.test(outside)) {
+      if (formsComplementarySequence(groupItems)) {
+        relation = "sequence";
+        evidence = 'inline "and" connector lists complementary required commands';
+      } else {
+        relation = "alternative";
+        evidence = 'inline "and" groups commands whose required order is not established';
+      }
+    } else {
+      continue;
+    }
+    groupCounter += 1;
+    assignGroup(output, indices, relation, evidence, groupIdPrefix + "-inline-" + String(groupCounter));
+    indices.forEach((index) => used.add(index));
+  }
+  for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
+    const label = matchLabel(lines[lineIndex]);
+    if (!label) continue;
+    const block = [];
+    let started = false;
+    for (let next = lineIndex + 1; next < Math.min(lineIndex + 8, lines.length); next++) {
+      const text = lines[next].trim();
+      if (isFenceDelimiter(text)) {
+        if (started) break;
+        continue;
+      }
+      if (text.length === 0) {
+        if (started) break;
+        continue;
+      }
+      started = true;
+      const atLine = [];
+      let lineHasItems = false;
+      output.forEach((item, index) => {
+        if (item.line === next + 1) {
+          lineHasItems = true;
+          if (!used.has(index)) atLine.push(index);
+        }
+      });
+      if (atLine.length > 0) {
+        block.push(...atLine);
+      } else if (!lineHasItems) {
+        break;
+      }
+    }
+    if (block.length < 2) continue;
+    const groupItems = block.map((index) => output[index]);
+    const rawLines = groupItems.map((item) => lines[item.line - 1] ?? item.raw);
+    let relation;
+    let evidence;
+    if (label.alternative) {
+      relation = "alternative";
+      evidence = label.evidence;
+    } else if (hasTrailingAnnotation(rawLines)) {
+      relation = "alternative";
+      evidence = "each option carries a trailing annotation";
+    } else if (!formsComplementarySequence(groupItems)) {
+      relation = "alternative";
+      evidence = "commands are listed as a group but do not provide enough evidence of a required order (they must be complementary settings of one executable)";
+    } else {
+      relation = "sequence";
+      evidence = label.evidence + " sharing one executable and complementary setting arguments";
+    }
+    groupCounter += 1;
+    assignGroup(output, block, relation, evidence, groupIdPrefix + "-label-" + String(groupCounter));
+    block.forEach((index) => used.add(index));
+  }
+  return output;
+}
+
 // src/recovery/extractor.ts
 var LEAD_PATTERNS = [
   { re: /^\s*run\s*:\s*(.+)$/i, pattern: "run-colon", confidence: 0.9 },
@@ -37621,7 +37803,15 @@ function harvestHintLine(line, lineNumber, hits) {
   const candidate = stripWrapping(m[2] ?? "");
   if (candidate.length === 0 || candidate.length > 300) return;
   if (candidate.split(/\s+/).length < 2) return;
-  hits.push({ raw: candidate, pattern: "hint-colon", confidence: 0.75, line: lineNumber });
+  const captured = m[2] ?? "";
+  const offset = m[0].indexOf(captured);
+  hits.push({
+    raw: candidate,
+    pattern: "hint-colon",
+    confidence: 0.75,
+    line: lineNumber,
+    column: Math.max(0, m.index + (offset >= 0 ? offset : 0))
+  });
 }
 function harvestFromLine(line, lineNumber, hits) {
   harvestHintLine(line, lineNumber, hits);
@@ -37630,7 +37820,14 @@ function harvestFromLine(line, lineNumber, hits) {
     if (m && m[1]) {
       const candidate = stripWrapping(m[1]);
       if (candidate.length > 0 && candidate.length <= 300) {
-        hits.push({ raw: candidate, pattern: lead.pattern, confidence: lead.confidence, line: lineNumber });
+        const offset = m[0].indexOf(m[1]);
+        hits.push({
+          raw: candidate,
+          pattern: lead.pattern,
+          confidence: lead.confidence,
+          line: lineNumber,
+          column: Math.max(0, m.index + (offset >= 0 ? offset : 0))
+        });
       }
     }
   }
@@ -37643,7 +37840,15 @@ function harvestFromLine(line, lineNumber, hits) {
       guard += 1;
       const candidate = stripWrapping(m[1] ?? "");
       if (candidate.length > 0 && candidate.length <= 300) {
-        hits.push({ raw: candidate, pattern: inline.pattern, confidence: inline.confidence, line: lineNumber });
+        const captured = m[1] ?? "";
+        const offset = m[0].indexOf(captured);
+        hits.push({
+          raw: candidate,
+          pattern: inline.pattern,
+          confidence: inline.confidence,
+          line: lineNumber,
+          column: Math.max(0, m.index + (offset >= 0 ? offset : 0))
+        });
       }
       if (m[0].length === 0) re.lastIndex += 1;
       if (!inline.pattern.endsWith("-backticks")) break;
@@ -37651,17 +37856,24 @@ function harvestFromLine(line, lineNumber, hits) {
   }
 }
 function harvestFencedBlocks(text, hits) {
-  const fence = /```(?:\w+)?\n([\s\S]*?)```/g;
+  const fence = /```[^\n]*\n([\s\S]*?)```/g;
   let m;
   while ((m = fence.exec(text)) !== null) {
     const body = m[1] ?? "";
     const before = text.slice(0, m.index);
-    const baseLine = before.split("\n").length;
+    const firstBodyLine = before.split("\n").length + 1;
     body.split("\n").forEach((line, idx) => {
       const cleaned = line.trim().replace(/^[$#>%]\s*/, "").trim();
       if (cleaned.length === 0 || cleaned.length > 300) return;
       if (/^[a-zA-Z0-9_@.][A-Za-z0-9_@.:/\\-]*(\s+.+)?$/.test(cleaned)) {
-        hits.push({ raw: cleaned, pattern: "fenced-code-block", confidence: 0.85, line: baseLine + idx });
+        const indent2 = line.search(/\S/);
+        hits.push({
+          raw: cleaned,
+          pattern: "fenced-code-block",
+          confidence: 0.85,
+          line: firstBodyLine + idx,
+          column: Math.max(0, indent2)
+        });
       }
     });
   }
@@ -37693,18 +37905,26 @@ function harvestContinuations(lines, hits) {
       }
       started = true;
       if (next.length > 300) break;
-      hits.push({ raw: next, pattern: lead.pattern, confidence: lead.confidence, line: j + 1 });
+      const indent2 = lines[j].search(/\S/);
+      hits.push({
+        raw: next,
+        pattern: lead.pattern,
+        confidence: lead.confidence,
+        line: j + 1,
+        column: Math.max(0, indent2)
+      });
       collected += 1;
     }
   }
 }
 function collectForStream(text, source, options) {
-  const clean = stripAnsi(text);
+  const clean = stripAnsi(text).replace(/\r\n/g, "\n").replace(/\r/g, "\n");
   const hits = [];
   harvestFencedBlocks(clean, hits);
   const lines = clean.split("\n");
   lines.forEach((line, idx) => harvestFromLine(line, idx + 1, hits));
   harvestContinuations(lines, hits);
+  hits.sort((a2, b) => a2.line - b.line || a2.column - b.column);
   const out = [];
   const seen = /* @__PURE__ */ new Set();
   for (const hit of hits) {
@@ -37722,11 +37942,12 @@ function collectForStream(text, source, options) {
       raw: hit.raw,
       source,
       line: hit.line,
+      column: hit.column,
       confidence: hit.confidence,
       pattern: hit.pattern
     });
   }
-  return out;
+  return attachAdviceGroups(out, lines, source);
 }
 function extractFromStreams(stdout, stderr, options = {}) {
   const fromStdout = collectForStream(stdout, "stdout", options);
@@ -37743,7 +37964,7 @@ function extractFromStreams(stdout, stderr, options = {}) {
 }
 function isPlausibleCommand(command) {
   if (command.length > 64) return false;
-  if (/^(and|or|the|then|with|from|this|that|your|you|run|try|use|be|is|are|was|were|been|being|has|have|had|do|does|did|can|could|should|would|may|might|must|shall|will|to|in|on|at|by|for|of|a|an|if|when|where|how|why|what|which|who|not|no|it|as|so)$/i.test(command)) return false;
+  if (/^(and|or|the|then|with|from|this|that|your|you|run|try|use|be|is|are|was|were|been|being|has|have|had|do|does|did|can|could|should|would|may|might|must|shall|will|to|in|on|at|by|for|of|a|an|if|when|where|how|why|what|which|who|not|no|it|as|so|one|either|following)$/i.test(command)) return false;
   return /^[A-Za-z0-9_@.][A-Za-z0-9_@.:/\\-]*$/.test(command);
 }
 
@@ -37773,9 +37994,29 @@ function rankCandidates(candidates, options = {}) {
   });
 }
 var AMBIGUITY_EPSILON = 0.05;
+function groupMembers(ranked, groupId) {
+  return ranked.filter((candidate) => candidate.group?.id === groupId).sort((a2, b) => (a2.group?.index ?? 0) - (b.group?.index ?? 0));
+}
 function selectCandidate(ranked, options = {}) {
   if (ranked.length === 0) return { kind: "none" };
   const top = ranked[0];
+  const group = top.group;
+  if (group && group.relation === "alternative" && group.size > 1) {
+    const members = groupMembers(ranked, group.id);
+    const extras = ranked.filter((candidate) => candidate.group?.id !== group.id).slice(0, Math.max(0, 5 - members.length));
+    return { kind: "ambiguous", candidates: [...members, ...extras].slice(0, 5), evidence: group.evidence };
+  }
+  if (group && group.relation === "sequence" && group.size > 1) {
+    const members = groupMembers(ranked, group.id);
+    if (members.length === group.size) {
+      return { kind: "sequence", candidates: members, evidence: group.evidence };
+    }
+    return {
+      kind: "ambiguous",
+      candidates: members.length > 0 ? members : ranked.slice(0, 5),
+      evidence: "recovery sequence could not be reconstructed completely"
+    };
+  }
   if (ranked.length === 1) return { kind: "single", candidate: top };
   if (top.confidence < 0.8) {
     return { kind: "ambiguous", candidates: ranked.slice(0, 5) };
@@ -37791,6 +38032,67 @@ function selectCandidate(ranked, options = {}) {
     return { kind: "ambiguous", candidates: ranked.slice(0, 5) };
   }
   return { kind: "single", candidate: top };
+}
+function adviceKey(candidate) {
+  return [candidate.source, candidate.command, candidate.args.join("\0"), candidate.line, candidate.pattern].join("");
+}
+function rankingReason(candidate, options) {
+  const prefer = options.prefer ?? ["stderr", "stdout"];
+  const bits = ["confidence " + candidate.confidence.toFixed(2)];
+  if (candidate.source === prefer[0]) bits.push(candidate.source + " preferred");
+  if (options.originalCommand && baseName(candidate.command) === baseName(options.originalCommand)) {
+    bits.push("matches original CLI");
+  }
+  if (candidate.group) {
+    bits.push(candidate.group.relation + " group: " + candidate.group.evidence);
+  }
+  return bits.join("; ");
+}
+function explainCandidates(ranked, selection, options = {}) {
+  const selectedKeys = selection.kind === "single" ? /* @__PURE__ */ new Set([adviceKey(selection.candidate)]) : selection.kind === "sequence" ? new Set(selection.candidates.map(adviceKey)) : /* @__PURE__ */ new Set();
+  const selectedByKey = selection.kind === "sequence" ? new Map(selection.candidates.map((candidate) => [adviceKey(candidate), candidate])) : /* @__PURE__ */ new Map();
+  return ranked.slice(0, 10).map((candidate, index) => {
+    const key = adviceKey(candidate);
+    const selected = selectedKeys.has(key);
+    let decision;
+    if (selected) {
+      if (selection.kind === "sequence") {
+        const group = selectedByKey.get(key)?.group ?? candidate.group;
+        decision = "selected as required sequence step " + String((group?.index ?? 0) + 1) + " of " + String(group?.size ?? 1);
+      } else {
+        decision = "selected as the highest-ranked executable advice";
+      }
+    } else if (selection.kind === "ambiguous") {
+      if (candidate.group?.relation === "alternative") {
+        decision = "not executed: mutually exclusive alternative";
+      } else {
+        decision = "not executed: no evidence that it is required or safer than the alternatives";
+      }
+    } else if (selection.kind === "none") {
+      decision = "not executed: no executable recovery advice matched the extracted output";
+    } else {
+      decision = "not executed: ranked below the selected recovery path";
+    }
+    return {
+      command: candidate.command,
+      args: [...candidate.args],
+      source: candidate.source,
+      line: candidate.line,
+      pattern: candidate.pattern,
+      confidence: candidate.confidence,
+      rank: index + 1,
+      selected,
+      reason: rankingReason(candidate, options) + ". " + decision
+    };
+  });
+}
+function buildDecision(kind, selection, ranked, options = {}, evidence) {
+  const decision = {
+    kind,
+    candidates: explainCandidates(ranked, selection, options)
+  };
+  if (evidence !== void 0) decision.evidence = evidence;
+  return decision;
 }
 
 // src/recovery/engine.ts
@@ -37808,7 +38110,10 @@ function deriveRecoveryPlan(kase, failure, options) {
       });
       const selected2 = selectCandidate(ranked2, { prefer: recovery.prefer });
       if (selected2.kind === "single") return { kind: "candidate", candidate: selected2.candidate, all: ranked2 };
-      if (selected2.kind === "ambiguous") return { kind: "ambiguous", candidates: selected2.candidates };
+      if (selected2.kind === "sequence") {
+        return { kind: "sequence", candidates: selected2.candidates, evidence: selected2.evidence, all: ranked2 };
+      }
+      if (selected2.kind === "ambiguous") return { kind: "ambiguous", candidates: selected2.candidates, evidence: selected2.evidence };
       return { kind: "none", all: [] };
     }
     return { kind: "none", all: [] };
@@ -37822,7 +38127,10 @@ function deriveRecoveryPlan(kase, failure, options) {
   });
   const selected = selectCandidate(ranked, { prefer: recovery.prefer });
   if (selected.kind === "single") return { kind: "candidate", candidate: selected.candidate, all: ranked };
-  if (selected.kind === "ambiguous") return { kind: "ambiguous", candidates: selected.candidates };
+  if (selected.kind === "sequence") {
+    return { kind: "sequence", candidates: selected.candidates, evidence: selected.evidence, all: ranked };
+  }
+  if (selected.kind === "ambiguous") return { kind: "ambiguous", candidates: selected.candidates, evidence: selected.evidence };
   return { kind: "none", all: ranked };
 }
 function parseStructuredRecovery(stdout, stderr) {
@@ -37845,17 +38153,19 @@ function parseStructuredRecovery(stdout, stderr) {
     if (typeof recovery !== "object" || recovery === null) continue;
     const commands = recovery.commands;
     if (!Array.isArray(commands)) continue;
+    const ordered = recovery.sequence === true;
+    const entries = [];
     commands.forEach((entry, idx) => {
       if (Array.isArray(entry) && entry.length > 0 && typeof entry[0] === "string") {
         const parts = entry.map(String);
         const cmd = parts[0];
         const args = parts.slice(1);
-        out.push({
+        entries.push({
           command: cmd,
           args,
           raw: cmd + " " + args.join(" "),
           source,
-          line: 1,
+          line: 1 + idx,
           confidence: 1,
           pattern: "structured-json"
         });
@@ -37863,7 +38173,7 @@ function parseStructuredRecovery(stdout, stderr) {
         const obj = entry;
         if (typeof obj.command === "string") {
           const args = Array.isArray(obj.args) ? obj.args.map(String) : [];
-          out.push({
+          entries.push({
             command: obj.command,
             args,
             raw: obj.command + " " + args.join(" "),
@@ -37875,6 +38185,19 @@ function parseStructuredRecovery(stdout, stderr) {
         }
       }
     });
+    if (ordered && entries.length > 1) {
+      const id = source + "-structured-sequence";
+      entries.forEach((entry, index) => {
+        entry.group = {
+          id,
+          relation: "sequence",
+          evidence: 'structured recovery.commands declares "sequence": true',
+          index,
+          size: entries.length
+        };
+      });
+    }
+    out.push(...entries);
   }
   return out;
 }
@@ -42690,13 +43013,13 @@ var logOutputSync = ({ serializedResult, fdNumber, state, verboseInfo, encoding,
   }
 };
 var writeToFiles = (serializedResult, stdioItems, outputFiles) => {
-  for (const { path: path12, append } of stdioItems.filter(({ type }) => FILE_TYPES.has(type))) {
-    const pathString = typeof path12 === "string" ? path12 : path12.toString();
+  for (const { path: path13, append } of stdioItems.filter(({ type }) => FILE_TYPES.has(type))) {
+    const pathString = typeof path13 === "string" ? path13 : path13.toString();
     if (append || outputFiles.has(pathString)) {
-      (0, import_node_fs6.appendFileSync)(path12, serializedResult);
+      (0, import_node_fs6.appendFileSync)(path13, serializedResult);
     } else {
       outputFiles.add(pathString);
-      (0, import_node_fs6.writeFileSync)(path12, serializedResult);
+      (0, import_node_fs6.writeFileSync)(path13, serializedResult);
     }
   }
 };
@@ -45085,6 +45408,8 @@ var {
 } = getIpcExport();
 
 // src/runner/process.ts
+var import_node_path9 = __toESM(require("node:path"), 1);
+var import_promises14 = require("node:fs/promises");
 var INTERACTIVE_HINTS = [
   /password\s*:/i,
   /enter\s+passphrase/i,
@@ -45096,10 +45421,30 @@ var INTERACTIVE_HINTS = [
 function looksInteractive(output) {
   return INTERACTIVE_HINTS.some((re) => re.test(output));
 }
+function isOutside(root, target) {
+  const relative = import_node_path9.default.relative(root, target);
+  return relative !== "" && (relative.startsWith("..") || import_node_path9.default.isAbsolute(relative));
+}
+async function resolveStepCwd(stepCwd, baseCwd) {
+  if (!stepCwd) return baseCwd;
+  if (import_node_path9.default.isAbsolute(stepCwd)) return stepCwd;
+  const resolved = resolveInWorkspace(baseCwd, stepCwd);
+  try {
+    const realRoot = await (0, import_promises14.realpath)(baseCwd);
+    const realTarget = await (0, import_promises14.realpath)(resolved);
+    if (isOutside(realRoot, realTarget)) {
+      throw new Error("Refusing to use a cwd outside the workspace: " + stepCwd);
+    }
+  } catch (err) {
+    const code = err.code;
+    if (code !== "ENOENT" && code !== "ENOTDIR") throw err;
+  }
+  return resolved;
+}
 async function runStep(step, options) {
   const args = step.args ?? [];
   const timeoutMs = step.timeout ? parseDuration(step.timeout) : options.defaultTimeoutMs;
-  const cwd = step.cwd ?? options.cwd;
+  const cwd = await resolveStepCwd(step.cwd, options.cwd);
   const started = Date.now();
   const stdinInput = step.stdin ? step.stdin.join("\n") + "\n" : options.stdinLines ? options.stdinLines.join("\n") + "\n" : void 0;
   const execaOptions = {
@@ -45149,7 +45494,7 @@ async function runStep(step, options) {
 
 // src/runner/resolve-exe.ts
 var import_node_fs8 = require("node:fs");
-var import_node_path9 = __toESM(require("node:path"), 1);
+var import_node_path10 = __toESM(require("node:path"), 1);
 function isExecutableFile(p) {
   try {
     (0, import_node_fs8.accessSync)(p, import_node_fs8.constants.X_OK);
@@ -45172,10 +45517,10 @@ function resolveExecutable(command, env) {
     return null;
   }
   const pathValue = env["PATH"] ?? env["Path"] ?? "";
-  const dirs = pathValue.split(import_node_path9.default.delimiter).filter((d) => d.length > 0);
+  const dirs = pathValue.split(import_node_path10.default.delimiter).filter((d) => d.length > 0);
   const extensions = process.platform === "win32" ? (env["PATHEXT"] ?? ".EXE;.CMD;.BAT").split(";").map((e) => e.toLowerCase()) : [""];
   for (const dir of dirs) {
-    const base = import_node_path9.default.join(dir, trimmed);
+    const base = import_node_path10.default.join(dir, trimmed);
     if (process.platform !== "win32") {
       if (isExecutableFile(base)) return base;
       continue;
@@ -45191,11 +45536,11 @@ function resolveExecutable(command, env) {
 }
 
 // src/assertions/files.ts
-var import_promises14 = require("node:fs/promises");
+var import_promises15 = require("node:fs/promises");
 var import_node_fs9 = require("node:fs");
 async function exists2(p) {
   try {
-    await (0, import_promises14.access)(p, import_node_fs9.constants.F_OK);
+    await (0, import_promises15.access)(p, import_node_fs9.constants.F_OK);
     return true;
   } catch {
     return false;
@@ -45220,7 +45565,13 @@ async function checkFiles(workspaceDir, files) {
     });
   }
   for (const rel of files.notExists ?? []) {
-    const resolved = resolveInWorkspace(workspaceDir, rel);
+    let resolved;
+    try {
+      resolved = resolveInWorkspace(workspaceDir, rel);
+    } catch (err) {
+      details.push({ ok: false, kind: "files.notExists", message: String(err.message) });
+      continue;
+    }
     const found = await exists2(resolved);
     details.push({
       ok: !found,
@@ -45232,7 +45583,7 @@ async function checkFiles(workspaceDir, files) {
 }
 
 // src/assertions/json.ts
-var import_promises15 = require("node:fs/promises");
+var import_promises16 = require("node:fs/promises");
 function getPath(obj, dotted) {
   let current = obj;
   for (const part of dotted.split(".")) {
@@ -45258,7 +45609,7 @@ async function checkJsonAssertions(workspaceDir, json) {
     }
     let raw;
     try {
-      raw = await (0, import_promises15.readFile)(resolved, "utf8");
+      raw = await (0, import_promises16.readFile)(resolved, "utf8");
     } catch {
       details.push({ ok: false, kind: "json", message: "JSON file not found: " + assertion.path });
       continue;
@@ -45362,6 +45713,9 @@ function clampHops(value) {
   if (value > 10) return 10;
   return Math.floor(value);
 }
+function adviceKey2(candidate) {
+  return [candidate.source, candidate.command, candidate.args.join("\0"), candidate.line, candidate.pattern].join("");
+}
 async function runStepsBestEffort(steps, base, warnings, label) {
   const executed = [];
   for (const step of steps ?? []) {
@@ -45389,11 +45743,14 @@ async function runCase(config, kase, ctx) {
   let initialFailure = null;
   let extractedAdvice = [];
   let selectedAdvice = null;
+  let decisionKind = null;
+  let decisionEvidence;
+  let decisionRanked = [];
+  let decisionSelected = [];
   let failureMatched = false;
   let failureDetail;
   let blockedReason;
   let errorDetail;
-  let hops = 0;
   const finish = async (finalStatus) => {
     const failed = finalStatus !== "PASS";
     const spec = kase.workspace ?? {};
@@ -45416,7 +45773,7 @@ async function runCase(config, kase, ctx) {
       stdout: maskSecrets(cmd.stdout, secrets, caseEnv2),
       stderr: maskSecrets(cmd.stderr, secrets, caseEnv2)
     });
-    return {
+    const result = {
       name: kase.name,
       description: kase.description,
       tags: kase.tags,
@@ -45440,6 +45797,43 @@ async function runCase(config, kase, ctx) {
       workspace: workspacePath,
       error: errorDetail
     };
+    if (decisionKind !== null) {
+      let ranked = decisionRanked;
+      let selection;
+      if (decisionKind === "sequence") {
+        const size = decisionSelected.length;
+        const chain = decisionSelected.map((candidate, index) => ({
+          ...candidate,
+          group: {
+            id: "decision-sequence",
+            relation: "sequence",
+            evidence: decisionEvidence ?? "executed recovery sequence",
+            index,
+            size
+          }
+        }));
+        const chainByKey = new Map(chain.map((candidate) => [adviceKey2(candidate), candidate]));
+        ranked = decisionRanked.map((candidate) => chainByKey.get(adviceKey2(candidate)) ?? candidate);
+        selection = { kind: "sequence", candidates: chain, evidence: decisionEvidence ?? "" };
+      } else if (decisionKind === "single" && decisionSelected[0]) {
+        selection = { kind: "single", candidate: decisionSelected[0] };
+      } else if (decisionKind === "ambiguous") {
+        selection = { kind: "ambiguous", candidates: decisionRanked, evidence: decisionEvidence };
+      } else {
+        selection = { kind: "none" };
+      }
+      result.decision = buildDecision(
+        decisionKind,
+        selection,
+        ranked,
+        {
+          prefer: kase.recovery?.prefer ?? ["stderr", "stdout"],
+          originalCommand: kase.run.command
+        },
+        decisionEvidence
+      );
+    }
+    return result;
   };
   try {
     await applyWorkspaceSpec(workspace.dir, ctx.configDir, kase.workspace);
@@ -45544,17 +45938,23 @@ async function runCase(config, kase, ctx) {
     caseAllowCommands: safety.caseAllowCommands,
     caseDenyCommands: safety.caseDenyCommands
   };
-  const executeRecoveryCommand = async (command, args, stdin, advice) => {
+  const evaluateRecoveryCommand = (command, args, advice) => {
     const check = checkCommandSafety(command, args, safetyOpts);
     const evaluation = advice ? { command, args, verdict: "allowed", reason: "", source: advice.source, line: advice.line, pattern: advice.pattern } : { command, args, verdict: "allowed", reason: "" };
     if (!check.ok) {
       evaluation.verdict = "blocked";
       evaluation.reason = check.reason ?? "Blocked by safety policy.";
-      safetyEvaluations.push(evaluation);
+    } else {
+      evaluation.reason = "passes safety policy (shell: " + (safety.shell ? "enabled" : "disabled") + ")";
+    }
+    safetyEvaluations.push(evaluation);
+    return evaluation;
+  };
+  const executeRecoveryCommand = async (command, args, stdin, advice, prechecked) => {
+    const evaluation = prechecked ?? evaluateRecoveryCommand(command, args, advice);
+    if (evaluation.verdict === "blocked") {
       return { result: null, blocked: evaluation.reason };
     }
-    evaluation.reason = "passes safety policy (shell: " + (safety.shell ? "enabled" : "disabled") + ")";
-    safetyEvaluations.push(evaluation);
     const step = stdin ? { command, args, stdin } : { command, args };
     let result;
     try {
@@ -45572,44 +45972,203 @@ async function runCase(config, kase, ctx) {
       };
     }
     recoverySteps.push(result);
-    hops = recoverySteps.length;
     graph.addNode("recovery_result", displayCommand(command, args) + " -> exit " + String(result.exitCode));
     return { result };
+  };
+  const sequenceBudgetError = (required) => {
+    const remaining = maxHops - recoverySteps.length;
+    if (required <= remaining) return void 0;
+    return "Required recovery sequence has " + required + " step(s), but only " + remaining + " of " + maxHops + " recovery hop(s) remain. RecurSpec refuses to run a partial required sequence.";
+  };
+  const preflightSequence = (candidates) => {
+    const evaluations = candidates.map(
+      (candidate) => evaluateRecoveryCommand(candidate.command, candidate.args, candidate)
+    );
+    const blocked = evaluations.find((evaluation) => evaluation.verdict === "blocked");
+    if (blocked) return { ok: false, reason: blocked.reason };
+    return { ok: true, evaluations };
+  };
+  const enqueueSequence = (pending, candidates) => {
+    const message = sequenceBudgetError(pending.length + candidates.length);
+    if (message) return { ok: false, kind: "budget", message };
+    const preflight = preflightSequence(candidates);
+    if (!preflight.ok) return { ok: false, kind: "blocked", reason: preflight.reason };
+    candidates.forEach((candidate, index) => {
+      pending.push({ advice: candidate, evaluation: preflight.evaluations[index] });
+    });
+    return { ok: true };
+  };
+  const extendDecisionChain = (candidates, ranked, evidence) => {
+    decisionSelected.push(...candidates);
+    for (const candidate of ranked) {
+      if (!decisionRanked.some((existing) => adviceKey2(existing) === adviceKey2(candidate))) {
+        decisionRanked.push(candidate);
+      }
+    }
+    if (decisionKind === "single" && decisionSelected.length > 1) {
+      decisionKind = "sequence";
+    }
+    if (decisionKind === "sequence") {
+      if (!decisionEvidence) {
+        decisionEvidence = evidence;
+      } else if (!decisionEvidence.includes(evidence)) {
+        decisionEvidence = decisionEvidence + "; " + evidence;
+      }
+    }
+  };
+  const finishWithTeardown = async (status) => {
+    await runStepsBestEffort(kase.teardown, base, warnings, "teardown");
+    await runStepsBestEffort(config.afterEach, base, warnings, "afterEach");
+    return finish(status);
+  };
+  const runAdviceQueue = async (pending) => {
+    while (pending.length > 0) {
+      if (recoverySteps.length + pending.length > maxHops) {
+        failureDetail = "Required recovery sequence has " + pending.length + " pending step(s), but only " + String(maxHops - recoverySteps.length) + " hop(s) remain. RecurSpec refuses to run a partial required sequence.";
+        return "RECOVERY_COMMAND_FAILED";
+      }
+      const entry = pending.shift();
+      const current = entry.advice;
+      selectedAdvice = current;
+      graph.addNode("advice", "suggested: " + displayCommand(current.command, current.args));
+      const outcome = await executeRecoveryCommand(
+        current.command,
+        current.args,
+        void 0,
+        current,
+        entry.evaluation
+      );
+      if (outcome.result === null) {
+        blockedReason = outcome.blocked;
+        return "BLOCKED_RECOVERY";
+      }
+      const combined = outcome.result.stdout + "\n" + outcome.result.stderr;
+      if (loopDetector.check(current.command, current.args, combined)) {
+        return "RECOVERY_LOOP";
+      }
+      if (outcome.result.timedOut) {
+        return "TIMEOUT";
+      }
+      const extractFollowUps = () => {
+        const followUps = extractFromStreams(outcome.result.stdout, outcome.result.stderr, {
+          mode: kase.recovery?.extract?.mode ?? "command"
+        });
+        const ranked2 = rankCandidates(followUps, {
+          prefer: kase.recovery?.prefer ?? ["stderr", "stdout"],
+          originalCommand: kase.run.command
+        });
+        return { ranked: ranked2, selected: selectCandidate(ranked2, { prefer: kase.recovery?.prefer }) };
+      };
+      if (outcome.result.exitCode === 0) {
+        const { ranked: ranked2, selected: selected2 } = extractFollowUps();
+        if (selected2.kind === "sequence") {
+          const enqueued = enqueueSequence(pending, selected2.candidates);
+          if (!enqueued.ok) {
+            if (enqueued.kind === "budget") {
+              failureDetail = enqueued.message;
+              return "RECOVERY_COMMAND_FAILED";
+            }
+            blockedReason = enqueued.reason;
+            return "BLOCKED_RECOVERY";
+          }
+          extendDecisionChain(selected2.candidates, ranked2, "follow-up advice added a required recovery sequence");
+        } else if (selected2.kind === "single" && selected2.candidate.confidence >= 0.85) {
+          if (recoverySteps.length + pending.length < maxHops) {
+            pending.push({ advice: selected2.candidate });
+            extendDecisionChain([selected2.candidate], ranked2, "follow-up advice extended the recovery chain");
+          } else {
+            warnings.push(
+              "Follow-up advice " + displayCommand(selected2.candidate.command, selected2.candidate.args) + " was not run because the hop budget is exhausted."
+            );
+          }
+        }
+        continue;
+      }
+      const { ranked, selected } = extractFollowUps();
+      if (selected.kind === "none") {
+        failureDetail = "Recovery step failed and offered no further advice: " + displayCommand(current.command, current.args);
+        return "RECOVERY_COMMAND_FAILED";
+      }
+      if (selected.kind === "ambiguous") {
+        extractedAdvice = selected.candidates;
+        decisionKind = "ambiguous";
+        decisionRanked = selected.candidates;
+        decisionSelected = [];
+        decisionEvidence = selected.evidence;
+        return "AMBIGUOUS_RECOVERY";
+      }
+      pending.length = 0;
+      if (selected.kind === "sequence") {
+        const enqueued = enqueueSequence(pending, selected.candidates);
+        if (!enqueued.ok) {
+          if (enqueued.kind === "budget") {
+            failureDetail = enqueued.message;
+            return "RECOVERY_COMMAND_FAILED";
+          }
+          blockedReason = enqueued.reason;
+          return "BLOCKED_RECOVERY";
+        }
+        extendDecisionChain(selected.candidates, ranked, "failed step offered a required recovery sequence");
+        continue;
+      }
+      if (recoverySteps.length >= maxHops) {
+        failureDetail = "Recovery step failed: " + displayCommand(current.command, current.args);
+        return "RECOVERY_COMMAND_FAILED";
+      }
+      pending.push({ advice: selected.candidate });
+      extendDecisionChain([selected.candidate], ranked, "failed step offered follow-up advice");
+    }
+    return null;
   };
   const plan = deriveRecoveryPlan(kase, initial, { originalCommand: kase.run.command });
   debugLog("case " + kase.name + " plan=" + plan.kind);
   if (plan.kind === "none") {
     extractedAdvice = plan.all;
-    await runStepsBestEffort(kase.teardown, base, warnings, "teardown");
-    await runStepsBestEffort(config.afterEach, base, warnings, "afterEach");
-    return finish("NO_RECOVERY_ADVICE");
+    decisionKind = "none";
+    decisionRanked = plan.all;
+    decisionEvidence = "no executable recovery advice matched the extracted output";
+    return finishWithTeardown("NO_RECOVERY_ADVICE");
   }
   if (plan.kind === "ambiguous") {
     extractedAdvice = plan.candidates;
-    await runStepsBestEffort(kase.teardown, base, warnings, "teardown");
-    await runStepsBestEffort(config.afterEach, base, warnings, "afterEach");
-    return finish("AMBIGUOUS_RECOVERY");
+    decisionKind = "ambiguous";
+    decisionRanked = plan.candidates;
+    decisionEvidence = plan.evidence;
+    return finishWithTeardown("AMBIGUOUS_RECOVERY");
   }
   if (plan.kind === "steps") {
-    for (const step of plan.steps) {
-      if (recoverySteps.length >= maxHops) break;
-      const outcome = await executeRecoveryCommand(step.command, step.args ?? [], step.stdin);
+    decisionKind = "steps";
+    decisionEvidence = "explicit recovery.steps declared by the contract";
+    if (plan.steps.length > maxHops) {
+      failureDetail = "Recovery contract declares " + plan.steps.length + " explicit step(s), but maxHops is " + maxHops + ". RecurSpec refuses to silently truncate the documented recovery path.";
+      return finishWithTeardown("RECOVERY_COMMAND_FAILED");
+    }
+    const explicitEvaluations = plan.steps.map(
+      (step) => evaluateRecoveryCommand(step.command, step.args ?? [])
+    );
+    const blocked = explicitEvaluations.find((evaluation) => evaluation.verdict === "blocked");
+    if (blocked) {
+      blockedReason = blocked.reason;
+      return finishWithTeardown("BLOCKED_RECOVERY");
+    }
+    for (const [stepIndex, step] of plan.steps.entries()) {
+      const outcome = await executeRecoveryCommand(
+        step.command,
+        step.args ?? [],
+        step.stdin,
+        void 0,
+        explicitEvaluations[stepIndex]
+      );
       if (outcome.result === null) {
         blockedReason = outcome.blocked;
-        await runStepsBestEffort(kase.teardown, base, warnings, "teardown");
-        await runStepsBestEffort(config.afterEach, base, warnings, "afterEach");
-        return finish("BLOCKED_RECOVERY");
+        return finishWithTeardown("BLOCKED_RECOVERY");
       }
       const combined = outcome.result.stdout + "\n" + outcome.result.stderr;
       if (loopDetector.check(step.command, step.args ?? [], combined)) {
-        await runStepsBestEffort(kase.teardown, base, warnings, "teardown");
-        await runStepsBestEffort(config.afterEach, base, warnings, "afterEach");
-        return finish("RECOVERY_LOOP");
+        return finishWithTeardown("RECOVERY_LOOP");
       }
       if (outcome.result.timedOut) {
-        await runStepsBestEffort(kase.teardown, base, warnings, "teardown");
-        await runStepsBestEffort(config.afterEach, base, warnings, "afterEach");
-        return finish("TIMEOUT");
+        return finishWithTeardown("TIMEOUT");
       }
       if (outcome.result.exitCode !== 0) {
         const followUps = extractFromStreams(outcome.result.stdout, outcome.result.stderr, {
@@ -45620,109 +46179,72 @@ async function runCase(config, kase, ctx) {
           originalCommand: kase.run.command
         });
         const selected = selectCandidate(ranked, { prefer: kase.recovery?.prefer });
-        if (selected.kind === "single" && recoverySteps.length < maxHops) {
-          extractedAdvice = ranked;
-          selectedAdvice = selected.candidate;
-          graph.addNode("advice", "suggested: " + displayCommand(selected.candidate.command, selected.candidate.args));
-          const follow = await executeRecoveryCommand(selected.candidate.command, selected.candidate.args, void 0, selected.candidate);
-          if (follow.result === null) {
-            blockedReason = follow.blocked;
-            await runStepsBestEffort(kase.teardown, base, warnings, "teardown");
-            await runStepsBestEffort(config.afterEach, base, warnings, "afterEach");
-            return finish("BLOCKED_RECOVERY");
-          }
-          if (follow.result.timedOut) {
-            await runStepsBestEffort(kase.teardown, base, warnings, "teardown");
-            await runStepsBestEffort(config.afterEach, base, warnings, "afterEach");
-            return finish("TIMEOUT");
-          }
-          if (follow.result.exitCode !== 0) {
-            failureDetail = "Recovery step failed: " + displayCommand(step.command, step.args ?? []);
-            await runStepsBestEffort(kase.teardown, base, warnings, "teardown");
-            await runStepsBestEffort(config.afterEach, base, warnings, "afterEach");
-            return finish("RECOVERY_COMMAND_FAILED");
-          }
-          continue;
+        if (selected.kind === "ambiguous") {
+          extractedAdvice = selected.candidates;
+          decisionKind = "ambiguous";
+          decisionRanked = selected.candidates;
+          decisionSelected = [];
+          decisionEvidence = selected.evidence;
+          return finishWithTeardown("AMBIGUOUS_RECOVERY");
         }
-        failureDetail = "Recovery step failed: " + displayCommand(step.command, step.args ?? []);
-        await runStepsBestEffort(kase.teardown, base, warnings, "teardown");
-        await runStepsBestEffort(config.afterEach, base, warnings, "afterEach");
-        return finish("RECOVERY_COMMAND_FAILED");
+        if (selected.kind === "none") {
+          failureDetail = "Recovery step failed: " + displayCommand(step.command, step.args ?? []);
+          return finishWithTeardown("RECOVERY_COMMAND_FAILED");
+        }
+        if (selected.kind === "single" && recoverySteps.length >= maxHops) {
+          failureDetail = "Recovery step failed: " + displayCommand(step.command, step.args ?? []);
+          return finishWithTeardown("RECOVERY_COMMAND_FAILED");
+        }
+        extractedAdvice = ranked;
+        selectedAdvice = selected.kind === "single" ? selected.candidate : selected.candidates[0] ?? null;
+        const pending = [];
+        if (selected.kind === "sequence") {
+          const enqueued = enqueueSequence(pending, selected.candidates);
+          if (!enqueued.ok) {
+            if (enqueued.kind === "budget") {
+              failureDetail = enqueued.message;
+              return finishWithTeardown("RECOVERY_COMMAND_FAILED");
+            }
+            blockedReason = enqueued.reason;
+            return finishWithTeardown("BLOCKED_RECOVERY");
+          }
+        } else {
+          pending.push({ advice: selected.candidate });
+        }
+        const followStatus = await runAdviceQueue(pending);
+        if (followStatus) return finishWithTeardown(followStatus);
+        continue;
       }
     }
     extractedAdvice = [];
     selectedAdvice = null;
+  } else if (plan.kind === "sequence") {
+    extractedAdvice = plan.all;
+    selectedAdvice = plan.candidates[0] ?? null;
+    decisionKind = "sequence";
+    decisionRanked = plan.all;
+    decisionSelected = [...plan.candidates];
+    decisionEvidence = plan.evidence;
+    const pending = [];
+    const enqueued = enqueueSequence(pending, plan.candidates);
+    if (!enqueued.ok) {
+      if (enqueued.kind === "budget") {
+        failureDetail = enqueued.message;
+        return finishWithTeardown("RECOVERY_COMMAND_FAILED");
+      }
+      blockedReason = enqueued.reason;
+      return finishWithTeardown("BLOCKED_RECOVERY");
+    }
+    const sequenceStatus = await runAdviceQueue(pending);
+    if (sequenceStatus) return finishWithTeardown(sequenceStatus);
   } else {
     extractedAdvice = plan.all;
     selectedAdvice = plan.candidate;
-    graph.addNode("advice", "suggested: " + displayCommand(plan.candidate.command, plan.candidate.args));
-    let current = plan.candidate;
-    while (current && recoverySteps.length < maxHops) {
-      const outcome = await executeRecoveryCommand(current.command, current.args, void 0, current);
-      if (outcome.result === null) {
-        blockedReason = outcome.blocked;
-        await runStepsBestEffort(kase.teardown, base, warnings, "teardown");
-        await runStepsBestEffort(config.afterEach, base, warnings, "afterEach");
-        return finish("BLOCKED_RECOVERY");
-      }
-      const combined = outcome.result.stdout + "\n" + outcome.result.stderr;
-      if (loopDetector.check(current.command, current.args, combined)) {
-        await runStepsBestEffort(kase.teardown, base, warnings, "teardown");
-        await runStepsBestEffort(config.afterEach, base, warnings, "afterEach");
-        return finish("RECOVERY_LOOP");
-      }
-      if (outcome.result.timedOut) {
-        await runStepsBestEffort(kase.teardown, base, warnings, "teardown");
-        await runStepsBestEffort(config.afterEach, base, warnings, "afterEach");
-        return finish("TIMEOUT");
-      }
-      if (outcome.result.exitCode === 0) {
-        const chained = extractFromStreams(outcome.result.stdout, outcome.result.stderr, {
-          mode: kase.recovery?.extract?.mode ?? "command"
-        });
-        const chainedRanked = rankCandidates(chained, {
-          prefer: kase.recovery?.prefer ?? ["stderr", "stdout"],
-          originalCommand: kase.run.command
-        });
-        const chainedSelected = selectCandidate(chainedRanked, { prefer: kase.recovery?.prefer });
-        if (chainedSelected.kind === "single" && chainedSelected.candidate.confidence >= 0.85 && recoverySteps.length < maxHops) {
-          current = chainedSelected.candidate;
-          selectedAdvice = current;
-          graph.addNode("advice", "suggested: " + displayCommand(current.command, current.args));
-          continue;
-        }
-        break;
-      }
-      if (recoverySteps.length >= maxHops) {
-        failureDetail = "Recovery step failed: " + displayCommand(current.command, current.args);
-        await runStepsBestEffort(kase.teardown, base, warnings, "teardown");
-        await runStepsBestEffort(config.afterEach, base, warnings, "afterEach");
-        return finish("RECOVERY_COMMAND_FAILED");
-      }
-      const followUps = extractFromStreams(outcome.result.stdout, outcome.result.stderr, {
-        mode: kase.recovery?.extract?.mode ?? "command"
-      });
-      const ranked = rankCandidates(followUps, {
-        prefer: kase.recovery?.prefer ?? ["stderr", "stdout"],
-        originalCommand: kase.run.command
-      });
-      const selected = selectCandidate(ranked, { prefer: kase.recovery?.prefer });
-      if (selected.kind === "none") {
-        failureDetail = "Recovery step failed and offered no further advice: " + displayCommand(current.command, current.args);
-        await runStepsBestEffort(kase.teardown, base, warnings, "teardown");
-        await runStepsBestEffort(config.afterEach, base, warnings, "afterEach");
-        return finish("RECOVERY_COMMAND_FAILED");
-      }
-      if (selected.kind === "ambiguous") {
-        extractedAdvice = selected.candidates;
-        await runStepsBestEffort(kase.teardown, base, warnings, "teardown");
-        await runStepsBestEffort(config.afterEach, base, warnings, "afterEach");
-        return finish("AMBIGUOUS_RECOVERY");
-      }
-      current = selected.candidate;
-      selectedAdvice = current;
-      graph.addNode("advice", "suggested: " + displayCommand(current.command, current.args));
-    }
+    decisionKind = "single";
+    decisionRanked = plan.all;
+    decisionSelected = [plan.candidate];
+    const candidateStatus = await runAdviceQueue([{ advice: plan.candidate }]);
+    if (candidateStatus) return finishWithTeardown(candidateStatus);
   }
   const verify = kase.verify ?? { rerunOriginal: true, exitCode: 0 };
   let verifyOutcome;
@@ -45766,11 +46288,9 @@ async function runCase(config, kase, ctx) {
     }
     const anyFailed = verification.some((v) => !v.ok);
     if (anyFailed) return finish("VERIFY_FAILED");
-    void hops;
     return finish("PASS");
   }
   if (verification.some((v) => !v.ok)) return finish("VERIFY_FAILED");
-  void hops;
   return finish("PASS");
 }
 
@@ -46010,8 +46530,23 @@ function renderJUnit(result) {
   lines.push("</testsuite>");
   return lines.join("\n") + "\n";
 }
+function recoveryChain(c3) {
+  const parts = [c3.originalCommand, ...c3.recoverySteps.map((step) => [step.command, ...step.args].join(" ").trim())];
+  if (c3.completion.mode === "retry" && c3.verifyOk && c3.status === "PASS") parts.push(c3.originalCommand);
+  return parts.join(" -> ");
+}
 function failureBody(c3) {
   const parts = ["Status: " + c3.status];
+  parts.push("Completion: " + c3.completion.mode + " (verified: " + String(c3.completion.verified) + ")");
+  parts.push("Recovery chain: " + recoveryChain(c3));
+  if (c3.decision) {
+    parts.push("Recovery decision: " + c3.decision.kind + (c3.decision.evidence ? " - " + c3.decision.evidence : ""));
+    for (const candidate of c3.decision.candidates.filter((item) => !item.selected).slice(0, 5)) {
+      parts.push(
+        "Candidate rejected: " + [candidate.command, ...candidate.args].join(" ") + " (" + candidate.reason + ")"
+      );
+    }
+  }
   if (c3.failureDetail) parts.push("Detail: " + c3.failureDetail);
   if (c3.blockedReason) parts.push("Blocked: " + c3.blockedReason);
   if (c3.error) parts.push("Error: " + c3.error);
@@ -46048,7 +46583,8 @@ function renderMarkdown(result) {
         return "`" + cmd + "`";
       });
       const extra = c3.extractedAdvice.length > 5 ? " (+" + (c3.extractedAdvice.length - 5) + " more)" : "";
-      recovery = c3.status + " after `" + chain + "`: " + candidates.join(", ") + extra;
+      const evidence = c3.decision?.evidence ? " - " + c3.decision.evidence : "";
+      recovery = c3.status + " after `" + chain + "`: " + candidates.join(", ") + extra + evidence;
     } else {
       recovery = c3.status + " after `" + chain + "`";
     }
@@ -46102,7 +46638,7 @@ function renderTerminal(result, options = {}) {
       if (c3.completion.mode === "goal") lines.push("  goal satisfied" + timing);
       else if (c3.completion.mode === "custom") lines.push("  verified" + timing);
       else lines.push("  recovered" + timing);
-      if (options.verbose && c3.safetyEvaluations.length > 0) {
+      if (options.verbose && hasCandidateDetail(c3)) {
         lines.push("");
         lines.push(...candidateLines(c3));
       }
@@ -46117,7 +46653,7 @@ function renderTerminal(result, options = {}) {
         lines.push("");
         lines.push("  Recovery path:");
         for (const label of c3.trace.path) lines.push("    " + label);
-        if (c3.safetyEvaluations.length > 0) lines.push(...candidateLines(c3));
+        if (hasCandidateDetail(c3)) lines.push(...candidateLines(c3));
       }
     }
     lines.push("");
@@ -46158,15 +46694,32 @@ function patternLabel(pattern) {
   if (pattern === "to-fix-run" || pattern === "to-continue-run") return "advice phrase";
   return pattern;
 }
+function hasCandidateDetail(c3) {
+  return (c3.decision?.candidates.length ?? 0) > 0 || c3.safetyEvaluations.length > 0;
+}
 function candidateLines(c3) {
   const lines = [];
   lines.push("  Recovery candidates:");
-  c3.safetyEvaluations.forEach((e, idx) => {
-    lines.push("    " + (idx + 1) + ". " + e.command + (e.args.length > 0 ? " " + e.args.join(" ") : ""));
-    const origin = e.source ? e.source + (e.line ? " line " + e.line : "") + (e.pattern ? " (" + patternLabel(e.pattern) + ")" : "") : "explicit step";
-    lines.push("       source: " + origin);
-    lines.push("       safety: " + e.verdict + " - " + e.reason);
-  });
+  const hasDecision = (c3.decision?.candidates.length ?? 0) > 0;
+  if (hasDecision) {
+    if (c3.decision?.evidence) lines.push("    evidence: " + c3.decision.evidence);
+    for (const candidate of c3.decision?.candidates ?? []) {
+      const cmd = candidate.command + (candidate.args.length > 0 ? " " + candidate.args.join(" ") : "");
+      lines.push("    " + candidate.rank + ". " + cmd + (candidate.selected ? " [selected]" : ""));
+      const origin = candidate.source + " line " + candidate.line + " (" + patternLabel(candidate.pattern) + ")";
+      lines.push("       source: " + origin);
+      lines.push("       ranking: " + candidate.reason);
+    }
+  }
+  if (c3.safetyEvaluations.length > 0) {
+    if (hasDecision) lines.push("  Safety evaluations:");
+    c3.safetyEvaluations.forEach((e, idx) => {
+      lines.push("    " + (idx + 1) + ". " + e.command + (e.args.length > 0 ? " " + e.args.join(" ") : ""));
+      const origin = e.source ? e.source + (e.line ? " line " + e.line : "") + (e.pattern ? " (" + patternLabel(e.pattern) + ")" : "") : "explicit step";
+      lines.push("       source: " + origin);
+      lines.push("       safety: " + e.verdict + " - " + e.reason);
+    });
+  }
   return lines;
 }
 function humanDetail(c3) {
@@ -46187,7 +46740,8 @@ function humanDetail(c3) {
       });
       const n2 = c3.extractedAdvice.length;
       const head = n2 === 1 ? "1 plausible recovery instruction:" : n2 + " equally plausible recovery instructions:";
-      return head + "\n\n" + items.join("\n") + "\n\nRecurSpec will not guess between equally ranked recovery paths.";
+      const evidence = c3.decision?.evidence ? "\n\nWhy execution was refused: " + c3.decision.evidence + "." : "";
+      return head + "\n\n" + items.join("\n") + evidence + "\n\nRecurSpec will not guess between equally ranked recovery paths.";
     }
     case "BLOCKED_RECOVERY":
       return "BLOCKED RECOVERY COMMAND\n" + (c3.blockedReason ?? "Blocked by safety policy.");
@@ -46221,7 +46775,7 @@ function indent(text) {
 }
 
 // action/src/inputs.ts
-var import_node_path10 = __toESM(require("node:path"), 1);
+var import_node_path11 = __toESM(require("node:path"), 1);
 var VALID_FORMATS = ["human", "json", "junit", "markdown"];
 function parseBoolean(name, raw) {
   const normalized = raw.trim().toLowerCase();
@@ -46256,7 +46810,7 @@ function optionalPath(raw) {
   return trimmed.length > 0 ? trimmed : void 0;
 }
 function toAbsolutePath(cwd, filePath) {
-  return import_node_path10.default.resolve(cwd, filePath);
+  return import_node_path11.default.resolve(cwd, filePath);
 }
 function resolveInputs(getInput2) {
   return {
@@ -46355,8 +46909,8 @@ function setCountOutputs(outcome) {
 }
 async function writeReportFile(filePath, content) {
   const absolute = toAbsolutePath(process.cwd(), filePath);
-  await (0, import_promises16.mkdir)(import_node_path11.default.dirname(absolute), { recursive: true });
-  await (0, import_promises16.writeFile)(absolute, content, "utf8");
+  await (0, import_promises17.mkdir)(import_node_path12.default.dirname(absolute), { recursive: true });
+  await (0, import_promises17.writeFile)(absolute, content, "utf8");
   return absolute;
 }
 function renderConsole(result, inputs) {

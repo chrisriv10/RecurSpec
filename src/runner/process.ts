@@ -1,5 +1,8 @@
 import { execa, type Options as ExecaOptions } from "execa";
+import path from "node:path";
+import { realpath } from "node:fs/promises";
 import { parseDuration } from "../config/duration.js";
+import { resolveInWorkspace } from "../safety/paths.js";
 import type { ExecutedCommand } from "../types/result.js";
 import type { StepSpec } from "../types/config.js";
 
@@ -24,10 +27,39 @@ export function looksInteractive(output: string): boolean {
   return INTERACTIVE_HINTS.some((re) => re.test(output));
 }
 
+function isOutside(root: string, target: string): boolean {
+  const relative = path.relative(root, target);
+  return relative !== "" && (relative.startsWith("..") || path.isAbsolute(relative));
+}
+
+async function resolveStepCwd(stepCwd: string | undefined, baseCwd: string): Promise<string> {
+  if (!stepCwd) return baseCwd;
+  // Absolute paths keep their explicitly documented meaning. Relative paths
+  // are contained by the case base cwd so `..` cannot escape the isolated
+  // workspace.
+  if (path.isAbsolute(stepCwd)) return stepCwd;
+  const resolved = resolveInWorkspace(baseCwd, stepCwd);
+  // A lexical check is not enough when a directory inside the workspace is a
+  // symlink/junction to somewhere else. Compare real paths when both exist.
+  try {
+    const realRoot = await realpath(baseCwd);
+    const realTarget = await realpath(resolved);
+    if (isOutside(realRoot, realTarget)) {
+      throw new Error("Refusing to use a cwd outside the workspace: " + stepCwd);
+    }
+  } catch (err) {
+    const code = (err as NodeJS.ErrnoException).code;
+    if (code !== "ENOENT" && code !== "ENOTDIR") throw err;
+  }
+  return resolved;
+}
+
 export async function runStep(step: StepSpec, options: RunStepOptions): Promise<ExecutedCommand> {
   const args = step.args ?? [];
   const timeoutMs = step.timeout ? parseDuration(step.timeout) : options.defaultTimeoutMs;
-  const cwd = step.cwd ?? options.cwd;
+  // Relative step cwd is resolved against the case base cwd (the isolated
+  // workspace), never against the RecurSpec process cwd.
+  const cwd = await resolveStepCwd(step.cwd, options.cwd);
   const started = Date.now();
   const stdinInput = step.stdin ? step.stdin.join("\n") + "\n" : options.stdinLines ? options.stdinLines.join("\n") + "\n" : undefined;
 

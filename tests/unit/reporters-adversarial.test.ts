@@ -118,6 +118,46 @@ describe("reporter correctness on hostile input", () => {
     expect(text).toContain("safety: allowed - passes safety policy (shell: disabled)");
   });
 
+  it("keeps safety verdicts alongside decision candidates", () => {
+    const blocked = nastyCase({
+      name: "blocked-with-decision",
+      status: "BLOCKED_RECOVERY",
+      blockedReason: "shell chaining is not allowed",
+      decision: {
+        kind: "single",
+        evidence: "one executable candidate",
+        candidates: [
+          {
+            command: "bad",
+            args: ["x"],
+            source: "stderr",
+            line: 2,
+            pattern: "hint-colon",
+            confidence: 0.75,
+            rank: 1,
+            selected: true,
+            reason: "selected as the highest-ranked executable advice"
+          }
+        ]
+      },
+      safetyEvaluations: [
+        {
+          command: "bad",
+          args: ["x"],
+          verdict: "blocked",
+          reason: "shell chaining is not allowed",
+          source: "stderr",
+          line: 2,
+          pattern: "hint-colon"
+        }
+      ]
+    });
+    const text = renderTerminal(buildRunResult([blocked], []), { verbose: true });
+    expect(text).toContain("ranking: selected as the highest-ranked executable advice");
+    expect(text).toContain("Safety evaluations:");
+    expect(text).toContain("safety: blocked - shell chaining is not allowed");
+  });
+
   it("stays quiet without verbose", () => {
     const evaluated = nastyCase({ name: "eval", status: "BLOCKED_RECOVERY", safetyEvaluations: [] });
     expect(renderTerminal(buildRunResult([evaluated], []))).not.toContain("Recovery candidates:");

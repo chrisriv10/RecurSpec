@@ -15,7 +15,8 @@ original failure (spawn, assert exit/output -> INVALID FAILURE STATE if unexpect
 extract candidates (deterministic patterns over stderr/stdout)
   |
   v
-rank/select (confidence, stream preference, CLI affinity; ties stay ambiguous)
+rank/select (confidence, stream preference, CLI affinity; required sequences
+kept in order; ties and alternatives stay ambiguous)
   |
   v
 safety check (never shell by default; deny/allow lists; dangerous patterns)
@@ -41,8 +42,9 @@ reporter (human, json, junit, markdown)
 - `config/` — loading and zod validation. Invalid configs fail with paths, never stacks.
 - `runner/` — process spawning (`process.ts`), temp workspaces (`workspace.ts`),
   executable lookup (`resolve-exe.ts`), and case orchestration (`runner.ts`).
-- `recovery/` — tokenizer, extractor, ranking/selection, chain engine, loop
-  detector, and the recovery graph/trace.
+- `recovery/` — tokenizer, extractor, conservative grouping (`grouping.ts`),
+  ranking/selection with decision explanations, chain engine, loop detector,
+  and the recovery graph/trace.
 - `safety/` — path containment and command policy. Refuses before guessing.
 - `verify/` — the completion abstraction (`retry` / `goal` / `custom`) and the
   shared assertion runners (exit codes, output, files, JSON, commands).

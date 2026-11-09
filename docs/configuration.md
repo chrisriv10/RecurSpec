@@ -48,6 +48,19 @@ cases:
 
 Accept `500ms`, `10s`, `2m`, `1h`, or a bare number (seconds).
 
+## Working directories
+
+A relative `cwd` on `run`, `setup`, `teardown`, `verify.commands`, or an
+explicit `recovery.steps` entry is resolved against the case cwd (the isolated
+workspace, or `workspace.root` when set). It is never resolved against the
+directory RecurSpec itself was launched from. Relative paths that traverse
+outside the case cwd, or that resolve through a symlink/junction to an outside
+directory, are refused. Absolute paths are unchanged for documented hook and
+case compatibility.
+
+Recovery advice extracted from output runs in the case cwd. RecurSpec does not
+infer a target directory that the diagnostic omitted.
+
 ## Environment handling
 
 Only `PATH` (plus Windows system vars) passes through by default.

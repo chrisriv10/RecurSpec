@@ -25,7 +25,8 @@ export function renderMarkdown(result: RunResult): string {
         return "`" + cmd + "`";
       });
       const extra = c.extractedAdvice.length > 5 ? " (+" + (c.extractedAdvice.length - 5) + " more)" : "";
-      recovery = c.status + " after `" + chain + "`: " + candidates.join(", ") + extra;
+      const evidence = c.decision?.evidence ? " - " + c.decision.evidence : "";
+      recovery = c.status + " after `" + chain + "`: " + candidates.join(", ") + extra + evidence;
     } else {
       recovery = c.status + " after `" + chain + "`";
     }

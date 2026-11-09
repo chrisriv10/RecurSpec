@@ -21,6 +21,9 @@ export type {
   CaseStatus,
   ExecutedCommand,
   ExtractedAdvice,
+  AdviceGroupInfo,
+  CandidateExplanation,
+  RecoveryDecision,
   SafetyEvaluation,
   VerificationDetail
 } from "./types/result.js";

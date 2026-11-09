@@ -28,14 +28,46 @@ export interface ExecutedCommand {
   cwd: string;
 }
 
+export interface AdviceGroupInfo {
+  id: string;
+  // "sequence" means every command is required, in order. "alternative"
+  // means the commands are mutually exclusive and none may be guessed.
+  relation: "sequence" | "alternative";
+  evidence: string;
+  index: number;
+  size: number;
+}
+
 export interface ExtractedAdvice {
   command: string;
   args: string[];
   raw: string;
   source: "stderr" | "stdout";
   line: number;
+  // Zero-based character offset of the command in its original line. Used to
+  // restore textual order when several extraction patterns match one line.
+  column?: number;
   confidence: number;
   pattern: string;
+  group?: AdviceGroupInfo;
+}
+
+export interface CandidateExplanation {
+  command: string;
+  args: string[];
+  source: "stderr" | "stdout";
+  line: number;
+  pattern: string;
+  confidence: number;
+  rank: number;
+  selected: boolean;
+  reason: string;
+}
+
+export interface RecoveryDecision {
+  kind: "none" | "single" | "sequence" | "steps" | "ambiguous";
+  evidence?: string;
+  candidates: CandidateExplanation[];
 }
 
 export interface SafetyEvaluation {
@@ -67,6 +99,7 @@ export interface CaseResult {
   failureDetail?: string;
   extractedAdvice: ExtractedAdvice[];
   selectedAdvice: ExtractedAdvice | null;
+  decision?: RecoveryDecision;
   recoverySteps: ExecutedCommand[];
   blockedReason?: string;
   safetyEvaluations: SafetyEvaluation[];

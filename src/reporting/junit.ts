@@ -29,8 +29,24 @@ export function renderJUnit(result: RunResult): string {
   return lines.join("\n") + "\n";
 }
 
+function recoveryChain(c: CaseResult): string {
+  const parts = [c.originalCommand, ...c.recoverySteps.map((step) => [step.command, ...step.args].join(" ").trim())];
+  if (c.completion.mode === "retry" && c.verifyOk && c.status === "PASS") parts.push(c.originalCommand);
+  return parts.join(" -> ");
+}
+
 function failureBody(c: CaseResult): string {
   const parts: string[] = ["Status: " + c.status];
+  parts.push("Completion: " + c.completion.mode + " (verified: " + String(c.completion.verified) + ")");
+  parts.push("Recovery chain: " + recoveryChain(c));
+  if (c.decision) {
+    parts.push("Recovery decision: " + c.decision.kind + (c.decision.evidence ? " - " + c.decision.evidence : ""));
+    for (const candidate of c.decision.candidates.filter((item) => !item.selected).slice(0, 5)) {
+      parts.push(
+        "Candidate rejected: " + [candidate.command, ...candidate.args].join(" ") + " (" + candidate.reason + ")"
+      );
+    }
+  }
   if (c.failureDetail) parts.push("Detail: " + c.failureDetail);
   if (c.blockedReason) parts.push("Blocked: " + c.blockedReason);
   if (c.error) parts.push("Error: " + c.error);

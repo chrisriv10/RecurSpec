@@ -64,9 +64,12 @@ describe("git-style diagnostics", () => {
     expect(cmds).toContain("git config --global user.name Your Name");
   });
 
-  it("treats the identity pair as ambiguous for a single-command executor", () => {
+  it("treats the identity pair as a required sequence", () => {
     const ranked = rankCandidates(extractFromStreams("", IDENTITY), { originalCommand: "git" });
-    expect(selectCandidate(ranked).kind).toBe("ambiguous");
+    const selection = selectCandidate(ranked);
+    expect(selection.kind).toBe("sequence");
+    if (selection.kind !== "sequence") return;
+    expect(selection.candidates).toHaveLength(2);
   });
 });
 

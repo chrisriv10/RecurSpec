@@ -24,3 +24,8 @@ if (result.summary.failed > 0) process.exit(1);
 `goal`, or `custom` proof. Everything else (`CaseResult`, `RunResult`,
 `RecurSpecConfig`, `SafetyEvaluation`, ...) is exported as types only;
 internal parser and runner helpers are deliberately not public.
+
+`CaseResult.decision` is an optional, additive diagnostic
+(`RecoveryDecision`): `kind`, optional `evidence`, and ranked
+`CandidateExplanation[]` entries. `ExtractedAdvice.group` is also optional.
+Code written against earlier result shapes keeps compiling and running.

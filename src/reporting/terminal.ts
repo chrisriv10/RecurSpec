@@ -41,7 +41,7 @@ export function renderTerminal(result: RunResult, options: { verbose?: boolean; 
       if (c.completion.mode === "goal") lines.push("  goal satisfied" + timing);
       else if (c.completion.mode === "custom") lines.push("  verified" + timing);
       else lines.push("  recovered" + timing);
-      if (options.verbose && c.safetyEvaluations.length > 0) {
+      if (options.verbose && hasCandidateDetail(c)) {
         lines.push("");
         lines.push(...candidateLines(c));
       }
@@ -56,7 +56,7 @@ export function renderTerminal(result: RunResult, options: { verbose?: boolean; 
         lines.push("");
         lines.push("  Recovery path:");
         for (const label of c.trace.path) lines.push("    " + label);
-        if (c.safetyEvaluations.length > 0) lines.push(...candidateLines(c));
+        if (hasCandidateDetail(c)) lines.push(...candidateLines(c));
       }
     }
     lines.push("");
@@ -100,15 +100,36 @@ function patternLabel(pattern: string): string {
   return pattern;
 }
 
+function hasCandidateDetail(c: CaseResult): boolean {
+  return (c.decision?.candidates.length ?? 0) > 0 || c.safetyEvaluations.length > 0;
+}
+
 function candidateLines(c: CaseResult): string[] {
   const lines: string[] = [];
   lines.push("  Recovery candidates:");
-  c.safetyEvaluations.forEach((e, idx) => {
-    lines.push("    " + (idx + 1) + ". " + e.command + (e.args.length > 0 ? " " + e.args.join(" ") : ""));
-    const origin = e.source ? e.source + (e.line ? " line " + e.line : "") + (e.pattern ? " (" + patternLabel(e.pattern) + ")" : "") : "explicit step";
-    lines.push("       source: " + origin);
-    lines.push("       safety: " + e.verdict + " - " + e.reason);
-  });
+  const hasDecision = (c.decision?.candidates.length ?? 0) > 0;
+  if (hasDecision) {
+    if (c.decision?.evidence) lines.push("    evidence: " + c.decision.evidence);
+    for (const candidate of c.decision?.candidates ?? []) {
+      const cmd = candidate.command + (candidate.args.length > 0 ? " " + candidate.args.join(" ") : "");
+      lines.push("    " + candidate.rank + ". " + cmd + (candidate.selected ? " [selected]" : ""));
+      const origin =
+        candidate.source + " line " + candidate.line + " (" + patternLabel(candidate.pattern) + ")";
+      lines.push("       source: " + origin);
+      lines.push("       ranking: " + candidate.reason);
+    }
+  }
+  if (c.safetyEvaluations.length > 0) {
+    // Decision candidates explain ranking; safety verdicts explain why a
+    // command was allowed or blocked. Both are needed on blocked cases.
+    if (hasDecision) lines.push("  Safety evaluations:");
+    c.safetyEvaluations.forEach((e, idx) => {
+      lines.push("    " + (idx + 1) + ". " + e.command + (e.args.length > 0 ? " " + e.args.join(" ") : ""));
+      const origin = e.source ? e.source + (e.line ? " line " + e.line : "") + (e.pattern ? " (" + patternLabel(e.pattern) + ")" : "") : "explicit step";
+      lines.push("       source: " + origin);
+      lines.push("       safety: " + e.verdict + " - " + e.reason);
+    });
+  }
   return lines;
 }
 
@@ -130,7 +151,8 @@ function humanDetail(c: CaseResult): string {
       });
       const n = c.extractedAdvice.length;
       const head = n === 1 ? "1 plausible recovery instruction:" : n + " equally plausible recovery instructions:";
-      return head + "\n\n" + items.join("\n") + "\n\nRecurSpec will not guess between equally ranked recovery paths.";
+      const evidence = c.decision?.evidence ? "\n\nWhy execution was refused: " + c.decision.evidence + "." : "";
+      return head + "\n\n" + items.join("\n") + evidence + "\n\nRecurSpec will not guess between equally ranked recovery paths.";
     }
     case "BLOCKED_RECOVERY":
       return "BLOCKED RECOVERY COMMAND\n" + (c.blockedReason ?? "Blocked by safety policy.");
