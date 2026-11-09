@@ -63,7 +63,10 @@ negatives:
 ## Safety notes
 
 - Git `--global` cases redirect `HOME` into the workspace and set
-  `GIT_CONFIG_NOSYSTEM=1`; the real user configuration is never touched.
+  `GIT_CONFIG_NOSYSTEM=1`; `user.useConfigOnly` is enabled through
+  `GIT_CONFIG_COUNT`/`GIT_CONFIG_KEY_0`/`GIT_CONFIG_VALUE_0` so Git never
+  auto-detects an identity from the runner account or hostname. The real user
+  configuration is never touched.
 - npm cases redirect `npm_config_cache` and disable the update notifier so no
   logs or cache entries leave the workspace.
 - Cargo cases stay inside the workspace with no network access

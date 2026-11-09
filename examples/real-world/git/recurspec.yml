@@ -13,6 +13,9 @@ cases:
     env:
       HOME: ./home
       GIT_CONFIG_NOSYSTEM: "1"
+      GIT_CONFIG_COUNT: "1"
+      GIT_CONFIG_KEY_0: user.useConfigOnly
+      GIT_CONFIG_VALUE_0: "true"
     workspace:
       mkdir: [home]
       write:
@@ -40,6 +43,9 @@ cases:
     env:
       HOME: ./home
       GIT_CONFIG_NOSYSTEM: "1"
+      GIT_CONFIG_COUNT: "1"
+      GIT_CONFIG_KEY_0: user.useConfigOnly
+      GIT_CONFIG_VALUE_0: "true"
     workspace:
       mkdir: [home]
       write:

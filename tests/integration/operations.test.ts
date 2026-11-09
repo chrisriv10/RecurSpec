@@ -91,6 +91,42 @@ describe("workspace, timeouts, verification, and hooks", () => {
     }
   });
 
+  it("resolves a legitimate dot-prefixed cwd inside the isolated workspace", async () => {
+    const result = await runSingleCase({
+      name: "dot-cache-cwd",
+      workspace: { write: { "..cache/where.mjs": "console.log(process.cwd())\n" } },
+      run: { command: process.execPath, args: ["where.mjs"], cwd: "..cache" },
+      failure: { exitCode: 0 },
+      recovery: { source: "output" }
+    });
+    expect(result.status).toBe("NO_RECOVERY_ADVICE");
+    const cwd = result.initialFailure?.cwd ?? "";
+    expect(path.isAbsolute(cwd)).toBe(true);
+    expect(path.basename(cwd)).toBe("..cache");
+  });
+
+  it("refuses a run.cwd through a dot-prefixed symlink outside the workspace", async (ctx) => {
+    const root = await mkdtemp(path.join(tmpdir(), "rs-dot-cache-root-"));
+    const outside = await mkdtemp(path.join(tmpdir(), "rs-dot-cache-out-"));
+    try {
+      try {
+        await symlink(outside, path.join(root, "..cache-link"), "junction");
+      } catch {
+        ctx.skip();
+        return;
+      }
+      await expect(
+        runStep(
+          { command: process.execPath, args: ["-e", "0"], cwd: "..cache-link" },
+          { cwd: root, defaultTimeoutMs: 5000 }
+        )
+      ).rejects.toThrow(/outside the workspace/);
+    } finally {
+      await rm(root, { recursive: true, force: true });
+      await rm(outside, { recursive: true, force: true });
+    }
+  });
+
   it("never modifies the source directory", async () => {
     const projectDir = await mkdtemp(path.join(tmpdir(), "rs-source-"));
     try {

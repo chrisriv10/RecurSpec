@@ -38356,11 +38356,15 @@ function isDangerousWorkspacePath(p) {
   }
   return false;
 }
+function isPathInside(root, target) {
+  const relative = import_node_path2.default.relative(root, target);
+  if (relative === "") return true;
+  if (import_node_path2.default.isAbsolute(relative)) return false;
+  return relative !== ".." && !relative.startsWith(".." + import_node_path2.default.sep);
+}
 function resolveInWorkspace(workspaceDir, target) {
   const resolved = import_node_path2.default.resolve(workspaceDir, target);
-  const relative = import_node_path2.default.relative(workspaceDir, resolved);
-  if (relative === "") return resolved;
-  if (relative.startsWith("..") || import_node_path2.default.isAbsolute(relative)) {
+  if (!isPathInside(workspaceDir, resolved)) {
     throw new Error("Refusing to touch path outside the workspace: " + target);
   }
   return resolved;
@@ -45422,8 +45426,7 @@ function looksInteractive(output) {
   return INTERACTIVE_HINTS.some((re) => re.test(output));
 }
 function isOutside(root, target) {
-  const relative = import_node_path9.default.relative(root, target);
-  return relative !== "" && (relative.startsWith("..") || import_node_path9.default.isAbsolute(relative));
+  return !isPathInside(root, target);
 }
 async function resolveStepCwd(stepCwd, baseCwd) {
   if (!stepCwd) return baseCwd;

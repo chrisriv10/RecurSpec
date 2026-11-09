@@ -2,7 +2,7 @@ import { execa, type Options as ExecaOptions } from "execa";
 import path from "node:path";
 import { realpath } from "node:fs/promises";
 import { parseDuration } from "../config/duration.js";
-import { resolveInWorkspace } from "../safety/paths.js";
+import { isPathInside, resolveInWorkspace } from "../safety/paths.js";
 import type { ExecutedCommand } from "../types/result.js";
 import type { StepSpec } from "../types/config.js";
 
@@ -28,8 +28,7 @@ export function looksInteractive(output: string): boolean {
 }
 
 function isOutside(root: string, target: string): boolean {
-  const relative = path.relative(root, target);
-  return relative !== "" && (relative.startsWith("..") || path.isAbsolute(relative));
+  return !isPathInside(root, target);
 }
 
 async function resolveStepCwd(stepCwd: string | undefined, baseCwd: string): Promise<string> {

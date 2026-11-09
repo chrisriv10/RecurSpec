@@ -26,7 +26,10 @@ Tested against git 2.50.1 (windows). Assertions use stable substrings only.
 
 Cases using `--global` redirect `HOME` to `./home` inside the isolated
 workspace (created via `workspace.mkdir`) and set `GIT_CONFIG_NOSYSTEM=1`,
-so the real user configuration is never read or written. This was verified:
-the real `~/.gitconfig` is untouched. `--global` commands are allowed by the
-default policy only because the environment makes them workspace-local;
-document this pattern rather than allowlisting git globally.
+so the real user configuration is never read or written. `user.useConfigOnly`
+is enabled through `GIT_CONFIG_COUNT`/`GIT_CONFIG_KEY_0`/`GIT_CONFIG_VALUE_0`
+so Git never auto-detects an identity from the runner account or hostname;
+this makes the missing-identity failure deterministic on every platform.
+This was verified: the real `~/.gitconfig` is untouched. `--global` commands
+are allowed by the default policy only because the environment makes them
+workspace-local; document this pattern rather than allowlisting git globally.
